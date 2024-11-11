@@ -36,7 +36,7 @@
 #include "mlir/include/mlir/Tools/mlir-translate/Translation.h"
 #include "xls/contrib/mlir/IR/register.h"
 #include "xls/contrib/mlir/tools/xls_translate/xls_stitch.h"
-#include "xls/contrib/mlir/tools/xls_translate/xls_translate.h"
+#include "xls/contrib/mlir/tools/xls_translate/xls_translate_from_mlir.h"
 #include "xls/public/c_api.h"
 
 namespace mlir::xls {
