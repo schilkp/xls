@@ -46,11 +46,19 @@ absl::Status TempDirectory::Cleanup() && {
     // This is an empty shell object, maybe it has been moved somewhere else.
     return absl::OkStatus();
   }
+  if (getenv("KEEP_TEMPS") != nullptr) {
+    VLOG(0) << absl::StreamFormat(
+        "KEEPING temp_dir '%s' because 'KEEP_TEMPS' env-var is set.", path_);
+    return absl::OkStatus();
+  }
   std::error_code ec;
   std::filesystem::remove_all(path_, ec);
   if (ec) {
     return absl::InternalError(absl::StrCat(
         "Failed to recursively delete temporary directory ", path_.c_str()));
+  }
+  if (getenv("KEEP_TEMPS") != nullptr) {
+    VLOG(0) << absl::StreamFormat("Deleted temp_dir '%s'", path_);
   }
   return absl::OkStatus();
 }
@@ -68,6 +76,9 @@ absl::StatusOr<TempDirectory> TempDirectory::Create() {
         absl::StrCat("Failed to create temporary directory ", temp_dir));
   }
 
+  if (getenv("KEEP_TEMPS") != nullptr) {
+    VLOG(0) << absl::StreamFormat("Created temp_dir '%s'", temp_dir);
+  }
   return TempDirectory(temp_dir);
 }
 

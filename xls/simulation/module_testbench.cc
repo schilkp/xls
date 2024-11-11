@@ -39,6 +39,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/types/span.h"
 #include "absl/types/variant.h"
+#include "re2/re2.h"
 #include "xls/codegen/module_signature.h"
 #include "xls/codegen/module_signature.pb.h"
 #include "xls/codegen/vast/vast.h"
@@ -58,7 +59,6 @@
 #include "xls/simulation/testbench_stream.h"
 #include "xls/simulation/verilog_include.h"
 #include "xls/simulation/verilog_simulator.h"
-#include "re2/re2.h"
 
 namespace xls {
 namespace verilog {
@@ -578,6 +578,19 @@ std::string ModuleTestbench::GenerateVerilog() const {
     m->Add<BlankLine>(SourceInfo());
     m->Add<Comment>(SourceInfo(), "Monitor for input/output ports.");
     Initial* initial = m->Add<Initial>(SourceInfo());
+
+    initial->statements()->Add<DumpFile>(
+        SourceInfo(), std::vector<Expression*>{file.Make<QuotedString>(
+                          SourceInfo(), std::string("testbench.vcd"))});
+
+    std::vector<Expression*> dumpvar_args = {};
+    dumpvar_args.push_back(
+        file.Make<UnQuotedString>(SourceInfo(), std::string("0")));
+    dumpvar_args.push_back(
+        file.Make<UnQuotedString>(SourceInfo(), std::string("testbench")));
+
+    initial->statements()->Add<DumpVars>(SourceInfo(), dumpvar_args);
+
     initial->statements()->Add<Display>(
         SourceInfo(),
         std::vector<Expression*>{file.Make<QuotedString>(
@@ -598,6 +611,7 @@ std::string ModuleTestbench::GenerateVerilog() const {
         SourceInfo(),
         std::vector<Expression*>{file.Make<QuotedString>(
             SourceInfo(), "Starting simulation. Monitor output:")});
+
     std::string monitor_fmt = "%t";
     std::vector<Expression*> monitor_args = {
         file.Make<SystemFunctionCall>(SourceInfo(), "time")};

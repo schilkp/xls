@@ -1,0 +1,341 @@
+$date
+	Mon Nov 11 09:23:08 2024
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module testbench $end
+$var wire 1 ! if_add_s32__output_vld $end
+$var wire 32 " if_add_s32__output [31:0] $end
+$var wire 1 # if_add_s32__input_b_rdy $end
+$var wire 1 $ if_add_s32__input_a_rdy $end
+$var reg 1 % __last_cycle_of_reset $end
+$var reg 1 & __thread_output_if_add_s32__output_capture_done $end
+$var reg 1 ' clk $end
+$var reg 32 ( if_add_s32__input_a [31:0] $end
+$var reg 1 ) if_add_s32__input_a_vld $end
+$var reg 32 * if_add_s32__input_b [31:0] $end
+$var reg 1 + if_add_s32__input_b_vld $end
+$var reg 1 , if_add_s32__output_rdy $end
+$var reg 1 - reset $end
+$scope module dut $end
+$var wire 1 . and_89 $end
+$var wire 1 ' clk $end
+$var wire 32 / if_add_s32__input_a [31:0] $end
+$var wire 1 0 if_add_s32__input_a_load_en $end
+$var wire 1 $ if_add_s32__input_a_rdy $end
+$var wire 1 1 if_add_s32__input_a_valid_inv $end
+$var wire 1 2 if_add_s32__input_a_valid_load_en $end
+$var wire 1 ) if_add_s32__input_a_vld $end
+$var wire 32 3 if_add_s32__input_b [31:0] $end
+$var wire 1 4 if_add_s32__input_b_load_en $end
+$var wire 1 # if_add_s32__input_b_rdy $end
+$var wire 1 5 if_add_s32__input_b_valid_inv $end
+$var wire 1 6 if_add_s32__input_b_valid_load_en $end
+$var wire 1 + if_add_s32__input_b_vld $end
+$var wire 32 7 if_add_s32__output [31:0] $end
+$var wire 1 8 if_add_s32__output_load_en $end
+$var wire 1 , if_add_s32__output_rdy $end
+$var wire 1 9 if_add_s32__output_valid_inv $end
+$var wire 1 : if_add_s32__output_valid_load_en $end
+$var wire 1 ! if_add_s32__output_vld $end
+$var wire 1 ; p0_all_active_inputs_valid $end
+$var wire 1 < p0_stage_done $end
+$var wire 1 - reset $end
+$var wire 32 = diff [31:0] $end
+$var wire 32 > add_69 [31:0] $end
+$var wire 32 ? acc [31:0] $end
+$var reg 32 @ ____state [31:0] $end
+$var reg 32 A __if_add_s32__input_a_reg [31:0] $end
+$var reg 1 B __if_add_s32__input_a_valid_reg $end
+$var reg 32 C __if_add_s32__input_b_reg [31:0] $end
+$var reg 1 D __if_add_s32__input_b_valid_reg $end
+$var reg 32 E __if_add_s32__output_reg [31:0] $end
+$var reg 1 F __if_add_s32__output_valid_reg $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+xF
+bx E
+xD
+bx C
+xB
+bx A
+bx @
+bx ?
+bx >
+bx =
+x<
+x;
+x:
+x9
+x8
+bx 7
+x6
+x5
+04
+bx 3
+x2
+x1
+00
+bx /
+x.
+1-
+0,
+0+
+bx *
+0)
+bx (
+0'
+0&
+0%
+0$
+0#
+bx "
+x!
+$end
+#5
+0.
+1:
+16
+12
+08
+0<
+19
+15
+11
+0;
+b0 ?
+0!
+0F
+b0 "
+b0 7
+b0 E
+0D
+b0 >
+b0 =
+b0 C
+0B
+b0 A
+b0 @
+1'
+#10
+0'
+#15
+1'
+#20
+0'
+#25
+1'
+#30
+0'
+#35
+1'
+#40
+0'
+#45
+1'
+#46
+1%
+#50
+0'
+#55
+1'
+#56
+1#
+14
+1$
+10
+0-
+0%
+1,
+1+
+b0 *
+b0 3
+1)
+b0 (
+b0 /
+#60
+0'
+#65
+1.
+1#
+14
+1$
+10
+1<
+16
+12
+18
+05
+01
+1;
+1D
+1B
+1'
+#66
+b1 (
+b1 /
+#70
+0'
+#75
+09
+b1 ?
+1!
+1F
+b1 >
+b1 =
+b1 A
+1'
+#80
+0'
+#85
+b10 ?
+b1 "
+b1 7
+b1 E
+b10 >
+b1 @
+1'
+#86
+b0 (
+b0 /
+b1 *
+b1 3
+#90
+0'
+#95
+0.
+b10 ?
+b10 "
+b10 7
+b10 E
+b1 C
+b11111111111111111111111111111111 =
+b0 A
+b1 >
+b10 @
+1'
+#100
+0'
+#105
+1'
+#110
+0'
+#115
+1'
+#120
+0'
+#125
+1'
+#126
+b0 *
+b0 3
+#130
+0'
+#135
+1.
+b10 >
+b0 =
+b0 C
+1'
+#136
+b1 (
+b1 /
+#140
+0'
+#145
+b11 ?
+b11 >
+b1 =
+b1 A
+1'
+#150
+0'
+#155
+b100 ?
+b11 "
+b11 7
+b11 E
+b100 >
+b11 @
+1'
+#156
+b1 *
+b1 3
+b0 (
+b0 /
+#160
+0'
+#165
+0.
+b100 ?
+b100 "
+b100 7
+b100 E
+b1 C
+b11111111111111111111111111111111 =
+b0 A
+b11 >
+b100 @
+1'
+#170
+0'
+#175
+1'
+#180
+0'
+#185
+1'
+#190
+0'
+#195
+1'
+#200
+0'
+#205
+1'
+#206
+0$
+00
+0#
+04
+bx (
+bx /
+0)
+bx *
+bx 3
+0+
+#210
+0'
+#215
+08
+0<
+15
+11
+0;
+0D
+0B
+1'
+#220
+0'
+#225
+19
+0!
+0F
+1'
+#226
+1&
+#230
+0'
+#235
+1'
+#236
