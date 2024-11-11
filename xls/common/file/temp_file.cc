@@ -123,8 +123,16 @@ TempFile::TempFile(const std::filesystem::path& path) : path_(path) {}
 
 void TempFile::Cleanup() {
   if (!path_.empty()) {
+    if (getenv("KEEP_TEMPS") != nullptr) {
+      VLOG(0) << absl::StreamFormat(
+          "KEEPING temp_file '%s' because 'KEEP_TEMPS' env-var is set.", path_);
+      return;
+    }
     if (unlink(path_.c_str()) != 0) {
       LOG(ERROR) << "Failed to delete temporary file " << path_;
+    }
+    if (getenv("KEEP_TEMPS") != nullptr) {
+      VLOG(0) << absl::StreamFormat("Created temp_file '%s'", path_);
     }
   }
 }
@@ -141,6 +149,9 @@ absl::StatusOr<TempFile> TempFile::Create(
     return absl::UnavailableError(
         absl::StrCat("Failed to create temporary file ", path_template, ": ",
                      Strerror(errno)));
+  }
+  if (getenv("KEEP_TEMPS") != nullptr) {
+    VLOG(0) << absl::StreamFormat("Created temp_file '%s'", path_template);
   }
   return TempFile(path_template);
 }
