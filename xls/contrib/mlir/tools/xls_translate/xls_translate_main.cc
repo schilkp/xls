@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "llvm/Support/SourceMgr.h"
 #include "llvm/include/llvm/ADT/APFloat.h"
 #include "llvm/include/llvm/ADT/StringExtras.h"
 #include "llvm/include/llvm/ADT/StringRef.h"
@@ -37,6 +38,7 @@
 #include "xls/contrib/mlir/IR/register.h"
 #include "xls/contrib/mlir/tools/xls_translate/xls_stitch.h"
 #include "xls/contrib/mlir/tools/xls_translate/xls_translate_from_mlir.h"
+#include "xls/contrib/mlir/tools/xls_translate/xls_translate_to_mlir.h"
 #include "xls/public/c_api.h"
 
 namespace mlir::xls {
@@ -65,6 +67,7 @@ llvm::cl::opt<bool> privatizeAndDceFunctions(
     llvm::cl::init(false));
 
 void registerInputDialects(DialectRegistry& registry) {
+  llvm::outs() << "Registering Dialects...\n";
   // TODO(jpienaar): Registering all as start/prototyping.
   mlir::registerAllDialects(registry);
   mlir::registerAllExtensions(registry);
@@ -80,6 +83,11 @@ LogicalResult mlirXlsToXlsTranslate(Operation* op, llvm::raw_ostream& output) {
   options.optimize_ir = optimizeIr;
   options.dslx_search_path = dslxSearchPath;
   return MlirXlsToXlsTranslate(op, output, options);
+}
+
+OwningOpRef<Operation*> xlsToMlirXlsTranslate(llvm::SourceMgr& mgr,
+                                              MLIRContext* ctx) {
+  return XlsToMlirXlsTranslate(mgr, ctx);
 }
 
 LogicalResult mlirXlsToVerilogTranslate(Operation* op,
@@ -101,6 +109,10 @@ LogicalResult mlirXlsStitch(Operation* op, llvm::raw_ostream& output) {
 TranslateFromMLIRRegistration mlirXlsToXlsTranslateRegistration(
     "mlir-xls-to-xls", "convert from MLIR XLS dialect to XLS",
     mlirXlsToXlsTranslate, registerInputDialects);
+
+TranslateToMLIRRegistration XlsToMlirXlsTranslateRegistration(
+    "xls-to-mlir-xls", "convert from XLS to MLIR XLS dialect",
+    xlsToMlirXlsTranslate, registerInputDialects);
 
 TranslateFromMLIRRegistration mlirXlsToVerilogTranslateRegistration(
     "mlir-xls-to-verilog", "convert from MLIR XLS dialect to Verilog",
