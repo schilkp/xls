@@ -26,7 +26,9 @@
 #include "mlir/include/mlir/IR/Location.h"
 #include "xls/contrib/mlir/IR/xls_ops.h"
 #include "xls/ir/function.h"
+#include "xls/ir/function_base.h"
 #include "xls/ir/nodes.h"
+#include "xls/ir/proc.h"
 #include "xls/public/ir_parser.h"
 
 // TODO(schilkp): Work-out error handling + source diagnostic tracking.
@@ -89,7 +91,7 @@ class PackageContext {
 
 class FunctionContext {
  public:
-  FunctionContext() = default;
+  explicit FunctionContext(bool is_proc) : is_proc_(is_proc) {};
 
   absl::Status add_ssa(int64_t id, Value op) {
     if (ssa_map_.contains(id)) {
@@ -109,8 +111,25 @@ class FunctionContext {
     }
   }
 
+  void add_state_elem(std::string name, Value elem) {
+    assert(is_proc_ && "Only proc functions contain state elements");
+    state_elem_map[name] = elem;
+  }
+
+  absl::StatusOr<Value> get_state_elem(std::string id) {
+    assert(is_proc_ && "Only proc functions contain state elements");
+    auto elem = state_elem_map.find(id);
+    if (elem == state_elem_map.end()) {
+      return absl::InternalError(absl::StrCat("Unknown state elem ", id));
+    } else {
+      return elem->second;
+    }
+  }
+
  private:
+  [[maybe_unused]] bool is_proc_;
   std::unordered_map<int64_t, Value> ssa_map_;
+  std::unordered_map<std::string, Value> state_elem_map;
 };
 
 //===----------------------------------------------------------------------===//
@@ -836,7 +855,6 @@ absl::StatusOr<Operation*> translateOp(::xls::Invoke& node, OpBuilder& builder,
     return fn.status();
   }
 
-
   std::vector<Value> operands_vec{};
   for (auto xls_operand : node.operands()) {
     auto operand = func_ctx.get_ssa(xls_operand->id());
@@ -869,8 +887,8 @@ absl::StatusOr<Operation*> translateOp(::xls::Map& node, OpBuilder& builder,
 
   auto result_type = translateType(node.GetType(), builder, ctx);
 
-  return builder.create<xls::MapOp>(builder.getUnknownLoc(), result_type, *array,
-                                    *fn);
+  return builder.create<xls::MapOp>(builder.getUnknownLoc(), result_type,
+                                    *array, *fn);
 }
 
 absl::StatusOr<Operation*> translateOp(::xls::Select& node, OpBuilder& builder,
@@ -1216,7 +1234,7 @@ absl::StatusOr<Operation*> translateFunction(::xls::Function& xls_func,
   auto* body = func.addEntryBlock();
 
   // Track Function context (XLS IR id -> MLIR SSA/OP mapping)
-  FunctionContext func_ctx{};
+  FunctionContext func_ctx(/*is_proc=*/false);
 
   // Add parameters to function context:
   for (uint64_t arg_idx = 0; arg_idx < xls_func.params().length(); arg_idx++) {
@@ -1268,6 +1286,176 @@ absl::StatusOr<Operation*> translateFunction(::xls::Function& xls_func,
 }
 
 //===----------------------------------------------------------------------===//
+// Proc Translation
+//===----------------------------------------------------------------------===//
+
+absl::StatusOr<Operation*> translateProc(::xls::Proc& xls_proc,
+                                         OpBuilder& builder, MLIRContext* ctx,
+                                         PackageContext& pkg_ctx) {
+  // Detect legacy procs with marked `next` node instead of `next_value` nodes.
+  // TODO: google/xls#1520 - remove this once fully transitioned over to
+  // `next_value` nodes.
+  bool is_legacy_proc =
+      (xls_proc.next_values().empty() && xls_proc.GetStateElementCount());
+
+  FunctionContext func_ctx(/*is_proc=*/true);
+
+  // Create Eproc:
+  EprocOp eproc =
+      builder.create<EprocOp>(builder.getUnknownLoc(),
+                              /*name=*/builder.getStringAttr(xls_proc.name()),
+                              /*discardable=*/false);
+
+  auto* body = &eproc.getRegion().emplaceBlock();
+
+  // State types and initial value:
+  for (int64_t i = 0; i < xls_proc.StateElements().size(); i++) {
+    auto xls_elem = xls_proc.StateElements()[i];
+    auto elem_type = translateType(xls_elem->type(), builder, ctx);
+    // TODO(schilkp): Initial state!
+    body->addArgument(elem_type, builder.getUnknownLoc());
+    auto mlir_elem = body->getArgument(i);
+    func_ctx.add_state_elem(xls_elem->name(), mlir_elem);
+  }
+
+  // For each state element, track the SSA value that defines its next value.
+  std::unordered_map<std::string, Value> state_elem_next_value{};
+
+  // For each state element, track all `next_value` nodes that contribute
+  // to it. They will be jointly converted in one NextValueOp per state element.
+  std::unordered_map<std::string, std::vector<::xls::Next*>> next_value_ops{};
+
+  // Proc next:
+  for (auto n : xls_proc.nodes()) {
+    builder.setInsertionPointToEnd(body);
+
+    // StateRead nodes give state elements an SSA identifier:
+    if (auto state_read = dynamic_cast<::xls::StateRead*>(n)) {
+      auto state_value =
+          func_ctx.get_state_elem(state_read->state_element()->name());
+      if (!state_value.ok()) {
+        return state_value.status();
+      }
+      auto err = func_ctx.add_ssa(state_read->id(), *state_value);
+      if (!err.ok()) {
+        return err;
+      }
+
+      if (is_legacy_proc) {
+        // Track all state elements for which this node defines their next
+        // value.
+        // TODO: google/xls#1520 - remove this once fully transitioned over to
+        // `next_value` nodes.
+        for (auto state_elem_idx : xls_proc.GetNextStateIndices(n)) {
+          state_elem_next_value[xls_proc.GetStateElement(state_elem_idx)
+                                    ->name()] = *state_value;
+        }
+      }
+
+      continue;  // StateRead get directly added to the ssa context and don't
+                 // otherwise map to a MLIR operation.
+    }
+
+    if (n->Is<::xls::Next>()) {
+      assert(!is_legacy_proc && "Legacy procs don't use next_value nodes");
+      auto xls_next = n->As<::xls::Next>();
+      auto state_elem_name = xls_next->state_read()
+                                 ->As<::xls::StateRead>()
+                                 ->state_element()
+                                 ->name();
+      next_value_ops[state_elem_name].push_back(xls_next);
+      continue;
+    }
+    auto op = translateAnyOp(*n, builder, ctx, func_ctx, pkg_ctx);
+    if (!op.ok()) {
+      return op;
+    }
+
+    if (is_legacy_proc) {
+      // Track all state elements for which this node defines their next
+      // value:
+      // TODO: google/xls#1520 - remove this once fully transitioned over to
+      // `next_value` nodes.
+      for (auto state_elem_idx : xls_proc.GetNextStateIndices(n)) {
+        state_elem_next_value[xls_proc.GetStateElement(state_elem_idx)
+                                  ->name()] = (*op)->getResult(0);
+      }
+    }
+  }
+
+  // Generate NextValueOps:
+  if (!is_legacy_proc) {
+    for (auto state_elem : xls_proc.StateElements()) {
+      // All Next nodes that contribue to this state element:
+      std::vector<::xls::Next*> elem_next_value_ops =
+          next_value_ops[state_elem->name()];
+
+      if (elem_next_value_ops.size() == 0) {
+        return absl::InternalError(absl::StrCat(
+            "No `next_value` nodes for state element ", state_elem->name()));
+      }
+
+      if (elem_next_value_ops.size() == 1 &&
+          !elem_next_value_ops[0]->predicate().has_value()) {
+        // State element defined by single Next node without predicate. No MLIR
+        // NextValueOp needed - directly feed YieldOp from value:
+        auto redundant_next_node = elem_next_value_ops[0];
+        auto next_value = func_ctx.get_ssa(redundant_next_node->value()->id());
+        if (!next_value.ok()) {
+          return next_value.status();
+        }
+        state_elem_next_value[state_elem->name()] = *next_value;
+      } else {
+        // Generate new NextValueOp:
+        std::vector<Value> values_vec{};
+        std::vector<Value> predicates_vec{};
+
+        for (auto next_value_op : elem_next_value_ops) {
+          if (!next_value_op->predicate().has_value()) {
+            return absl::InternalError(absl::StrCat(
+                "`next_value` nodes for state element ", state_elem->name(),
+                " lacks predicate but there are multiple `next_value` nodes."));
+          }
+
+          auto val = func_ctx.get_ssa(next_value_op->value()->id());
+          if (!val.ok()) {
+            return val.status();
+          }
+          values_vec.push_back(*val);
+
+          auto predicate =
+              func_ctx.get_ssa(next_value_op->predicate().value()->id());
+          if (!predicate.ok()) {
+            return val.status();
+          }
+          predicates_vec.push_back(*predicate);
+        }
+
+        auto elem_type = translateType(state_elem->type(), builder, ctx);
+
+        builder.setInsertionPointToEnd(body);
+        auto next = builder.create<NextValueOp>(
+            builder.getUnknownLoc(), elem_type, ValueRange(predicates_vec),
+            ValueRange(values_vec));
+
+        state_elem_next_value[state_elem->name()] = next;
+      }
+    }
+  }
+
+  // Generate terminating yield op:
+  std::vector<Value> next_value_elems{};
+  for (auto state_elem : xls_proc.StateElements()) {
+    next_value_elems.push_back(state_elem_next_value[state_elem->name()]);
+  }
+  builder.setInsertionPointToEnd(body);
+  builder.create<YieldOp>(builder.getUnknownLoc(),
+                          ValueRange(next_value_elems));
+
+  return eproc;
+}
+
+//===----------------------------------------------------------------------===//
 // Channel Translation
 //===----------------------------------------------------------------------===//
 
@@ -1306,6 +1494,15 @@ absl::Status translatePackage(::xls::Package& xls_pkg, OpBuilder& builder,
     auto func = translateFunction(*f, builder, ctx, pkg_ctx);
     if (!func.ok()) {
       return func.status();
+    }
+  }
+
+  // Translate all procs:
+  for (const auto& p : xls_pkg.procs()) {
+    builder.setInsertionPointToEnd(module.getBody());
+    auto proc = translateProc(*p, builder, ctx, pkg_ctx);
+    if (!proc.ok()) {
+      return proc.status();
     }
   }
 
