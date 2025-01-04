@@ -1693,6 +1693,13 @@ OwningOpRef<Operation*> XlsToMlirXlsTranslate(llvm::SourceMgr& mgr,
     return {};
   }
 
+  // Emit comment marking top entity at beginning of file.
+  // TODO(schilkp): This is a workaround to enable fuzzing until proper "top"
+  //                tracking is implemented in the MLIR dialect.
+  if (package.value()->HasTop()) {
+    llvm::outs() << "// top: " << (*package.value()->GetTop())->name() << "\n";
+  }
+
   return OwningOpRef(module);
 }
 

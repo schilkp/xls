@@ -95,6 +95,15 @@ class SampleOptions {
   bool optimize_ir() const { return proto_.optimize_ir(); }
   void set_optimize_ir(bool value) { proto_.set_optimize_ir(value); }
 
+  bool translate_ir_to_mlir() const { return proto_.translate_ir_to_mlir(); }
+  void set_translate_ir_to_mlir(bool value) { proto_.set_translate_ir_to_mlir(value); }
+
+  bool translate_opt_ir_to_mlir() const { return proto_.translate_opt_ir_to_mlir(); }
+  void set_translate_opt_ir_to_mlir(bool value) { proto_.set_translate_opt_ir_to_mlir(value); }
+
+  bool translate_mlir_to_ir() const { return proto_.translate_mlir_to_ir(); }
+  void set_translate_mlir_to_ir(bool value) { proto_.set_translate_mlir_to_ir(value); }
+
   bool use_jit() const { return proto_.use_jit(); }
   void set_use_jit(bool value) { proto_.set_use_jit(value); }
 
