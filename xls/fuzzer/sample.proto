@@ -48,6 +48,16 @@ message SampleOptionsProto {
   // Whether to optimize the XLS IR.
   optional bool optimize_ir = 5;
 
+  // Wheter to convert the unoptimized IR to the XLS MLIR dialect.
+  optional bool translate_ir_to_mlir = 18;
+
+  // Wheter to convert the optimized IR to the XLS MLIR dialect.
+  optional bool translate_opt_ir_to_mlir = 19;
+
+  // Wheter to convert the XLS MLIR dialect back to XLS IR. Only meaningful if
+  // translate_to_mlir or translate_opt_to_mlir is true.
+  optional bool translate_mlir_to_ir = 20;
+
   // Use LLVM JIT when evaluating the XLS IR.
   //
   // TODO(leary): 2021-03-16 Currently we run the unopt IR interpretation

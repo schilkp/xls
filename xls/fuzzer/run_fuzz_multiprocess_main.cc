@@ -73,6 +73,14 @@ ABSL_FLAG(std::optional<std::string>, summary_path, std::nullopt,
           "with one file per worker. Files are appended to by the worker.");
 ABSL_FLAG(std::optional<int64_t>, timeout_seconds, std::nullopt,
           "The timeout value in seconds for each subcommand invocation.");
+ABSL_FLAG(bool, translate_ir_to_mlir, false,
+          "Convert the IR to the XLS MLIR dialect. Experimental.");
+ABSL_FLAG(bool, translate_opt_ir_to_mlir, false,
+          "Convert the optimized IR to the XLS MLIR dialect. Experimental.");
+ABSL_FLAG(bool, translate_mlir_to_ir, false,
+          "Convert all generated MLIR files back to XLS IR. Requires at least "
+          "one of --translate_ir_to_mlir or --translate_opt_ir_to_mlir to be "
+          "set. Experimental.");
 ABSL_FLAG(bool, use_llvm_jit, true,
           "Use LLVM JIT to evaluate IR. The interpreter is still invoked at "
           "least once on the IR even with this option enabled, but this option "
@@ -97,6 +105,9 @@ struct Options {
   bool emit_loops;
   bool force_failure;
   bool generate_proc;
+  bool translate_ir_to_mlir;
+  bool translate_opt_ir_to_mlir;
+  bool translate_mlir_to_ir;
   int64_t max_width_aggregate_types;
   int64_t max_width_bits_types;
   int64_t proc_ticks;
@@ -157,6 +168,9 @@ absl::Status RealMain(const Options& options) {
   sample_options.set_convert_to_ir(true);
   sample_options.set_input_is_dslx(true);
   sample_options.set_ir_converter_args({"--top=main"});
+  sample_options.set_translate_ir_to_mlir(options.translate_ir_to_mlir);
+  sample_options.set_translate_opt_ir_to_mlir(options.translate_opt_ir_to_mlir);
+  sample_options.set_translate_mlir_to_ir(options.translate_mlir_to_ir);
   sample_options.set_optimize_ir(true);
   sample_options.set_proc_ticks(options.generate_proc ? options.proc_ticks : 0);
   sample_options.set_sample_type(options.generate_proc
@@ -197,6 +211,13 @@ int main(int argc, char** argv) {
   if (absl::GetFlag(FLAGS_simulate) && !absl::GetFlag(FLAGS_codegen)) {
     LOG(QFATAL) << "Must specify --codegen when --simulate is given.";
   }
+  if (absl::GetFlag(FLAGS_translate_mlir_to_ir) &&
+      !absl::GetFlag(FLAGS_translate_ir_to_mlir) &&
+      !absl::GetFlag(FLAGS_translate_opt_ir_to_mlir)) {
+    LOG(QFATAL)
+        << "Must specify at least one of --translate_ir_to_mlir or "
+           "--translate_opt_ir_to_mlir if --translate_mlir_to_ir is given.";
+  }
 
   return xls::ExitStatus(xls::RealMain({
       .duration = absl::GetFlag(FLAGS_duration),
@@ -206,6 +227,9 @@ int main(int argc, char** argv) {
       .emit_loops = absl::GetFlag(FLAGS_emit_loops),
       .force_failure = absl::GetFlag(FLAGS_force_failure),
       .generate_proc = absl::GetFlag(FLAGS_generate_proc),
+      .translate_ir_to_mlir = absl::GetFlag(FLAGS_translate_ir_to_mlir),
+      .translate_opt_ir_to_mlir = absl::GetFlag(FLAGS_translate_opt_ir_to_mlir),
+      .translate_mlir_to_ir = absl::GetFlag(FLAGS_translate_mlir_to_ir),
       .max_width_aggregate_types =
           absl::GetFlag(FLAGS_max_width_aggregate_types),
       .max_width_bits_types = absl::GetFlag(FLAGS_max_width_bits_types),
