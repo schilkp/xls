@@ -58,6 +58,7 @@ class SampleRunner {
     std::optional<Callable> ir_converter_main;
     std::optional<Callable> ir_opt_main;
     std::optional<Callable> simulate_module_main;
+    std::optional<Callable> xls_translate_main;
   };
 
   explicit SampleRunner(std::filesystem::path run_dir)

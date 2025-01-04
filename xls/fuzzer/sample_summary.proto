@@ -47,6 +47,12 @@ message SampleTimingProto {
   optional int64 optimize_ns = 7;
   optional int64 optimized_interpret_ir_ns = 8;
   optional int64 optimized_jit_ns = 9;
+  optional int64 translate_to_mlir_ns = 14;
+  optional int64 translate_from_mlir_ns = 15;
+  optional int64 mlir_roundtrip_interpret_ns = 16;
+  optional int64 translate_opt_to_mlir_ns = 17;
+  optional int64 translate_opt_from_mlir_ns = 18;
+  optional int64 opt_mlir_roundtrip_interpret_ns = 19;
   optional int64 codegen_ns = 10;
   optional int64 simulate_ns = 11;
   optional int64 codegen_ng_ns = 12;

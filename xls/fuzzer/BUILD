@@ -293,6 +293,7 @@ cc_library(
         "//xls/tools:eval_proc_main",
         "//xls/tools:opt_main",
         "//xls/tools:simulate_module_main",
+        "//xls/contrib/mlir:xls_translate",
     ],
     deps = [
         ":cpp_sample_runner",
