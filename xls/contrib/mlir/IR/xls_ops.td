@@ -355,8 +355,10 @@ def Xls_NegOp : Xls_UnaryOp<"neg", [Pure, SameOperandsAndResultType]> {
 // Arithmetic binary operations
 //===----------------------------------------------------------------------===//
 
-class Xls_ArithBinaryOp<string name, string desc>
-    : Xls_BinaryOp<name, [Pure, SameOperandsAndResultType]> {
+class Xls_ArithBinaryOp<string name, string desc, list<Trait> traits = []>
+    : Xls_BinaryOp<name, !listconcat(traits, [
+        Pure,
+      ]) > {
   let summary = !strconcat(desc, " operation");
   let description = summary;
   let arguments = (ins
@@ -366,7 +368,7 @@ class Xls_ArithBinaryOp<string name, string desc>
   let builders = [
     OpBuilder<(ins "::mlir::Value":$lhs, "int":$rhs), [{
       ::mlir::Value rhs_val = $_builder.create<ConstantScalarOp>(lhs.getLoc(), lhs.getType(), $_builder.getI32IntegerAttr(rhs));
-      build($_builder, $_state, lhs, rhs_val);
+      build($_builder, $_state, lhs.getType(), lhs, rhs_val);
     }]>
   ];
   let results = (outs
@@ -401,7 +403,7 @@ class Xls_PartialProdOp<string name, string desc> :  Xls_Op<name, [
   ];
 }
 
-def Xls_AddOp : Xls_ArithBinaryOp<"add", "addition"> {
+def Xls_AddOp : Xls_ArithBinaryOp<"add", "addition", [SameOperandsAndResultType]> {
   let hasFolder = 1;
 }
 def Xls_SmulOp : Xls_ArithBinaryOp<"smul", "signed multiplication">;
@@ -427,11 +429,11 @@ def Xls_UmulpOp : Xls_PartialProdOp<"umulp", [{
   The two results have the same type, but are not fully constrained: Any
   two values that fulfill the above are valid.
 }]>;
-def Xls_SdivOp : Xls_ArithBinaryOp<"sdiv", "signed division">;
-def Xls_SmodOp : Xls_ArithBinaryOp<"smod", "signed modulo">;
-def Xls_SubOp : Xls_ArithBinaryOp<"sub", "subtraction">;
-def Xls_UdivOp : Xls_ArithBinaryOp<"udiv", "unsigned division">;
-def Xls_UmodOp : Xls_ArithBinaryOp<"umod", "unsigned modulo">;
+def Xls_SdivOp : Xls_ArithBinaryOp<"sdiv", "signed division", [SameOperandsAndResultType]>;
+def Xls_SmodOp : Xls_ArithBinaryOp<"smod", "signed modulo", [SameOperandsAndResultType]>;
+def Xls_SubOp : Xls_ArithBinaryOp<"sub", "subtraction", [SameOperandsAndResultType]>;
+def Xls_UdivOp : Xls_ArithBinaryOp<"udiv", "unsigned division", [SameOperandsAndResultType]>;
+def Xls_UmodOp : Xls_ArithBinaryOp<"umod", "unsigned modulo", [SameOperandsAndResultType]>;
 
 //===----------------------------------------------------------------------===//
 // Comparison operations
