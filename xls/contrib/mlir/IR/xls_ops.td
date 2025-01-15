@@ -97,6 +97,9 @@ defvar Xls_Bits = AnyTypeOf<[StaticShapeTensorOf<[Xls_ScalarBits]>,
                              Xls_ArrayType,
                              Xls_ScalarBits,
                              Xls_OpaqueType]>;
+defvar Xls_ScalarBit = I1;
+defvar Xls_Bit = AnyTypeOf<[Xls_ScalarBit,
+                            StaticShapeTensorOf<[Xls_ScalarBit]>]>;
 defvar Xls_BitsOrTuple = AnyTypeOf<[Xls_Bits, NestedTupleOf<[Xls_Bits]>]>;
 
 // Base class for XLS dialect attributes.
@@ -334,7 +337,7 @@ class Xls_ComparisonOp<string name>
     Xls_Bits:$rhs
   );
   let results = (outs
-    Xls_Bits:$result
+    Xls_Bit:$result
   );
   let builders = [
     OpBuilder<(ins "::mlir::Value":$lhs, "::mlir::Value":$rhs), [{
