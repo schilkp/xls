@@ -517,6 +517,40 @@ xls.eproc @eproc(%arg: i32) zeroinitializer {
 
 // -----
 
+// CHECK-LABEL: xls.eproc @eproc2
+xls.eproc @eproc2(%arg: i32) zeroinitializer {
+  %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
+  xls.proc.yield %0 : i32
+}
+
+// -----
+
+// CHECK-LABEL: xls.eproc @eproc3
+xls.eproc @eproc3(%arg: i32) {
+  %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
+  %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
+  xls.proc.yield %0 (init: %0) : i32
+}
+
+// -----
+
+// expected-error@+1 {{xls.eproc must either be marked as zeroinitializer or contain a yield with initial value}}
+xls.eproc @eproc4(%arg: i32) {
+  %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
+  xls.proc.yield %0 : i32
+}
+
+// -----
+
+// expected-error@+1 {{xls.eproc may not be both as zeroinitializer and contain a yield with initial value}}
+xls.eproc @eproc4(%arg: i32) zeroinitializer {
+  %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
+  %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
+  xls.proc.yield %0 : i32
+}
+
+// -----
+
 // expected-error@+1 {{op next expects 1 channels but spawns yields 0}}
 xls.sproc @sproc() {
   spawns {
@@ -564,6 +598,35 @@ xls.sproc @sproc2() {
     // expected-error@+1 {{op channel is not an output channel}}
     %tok3 = xls.ssend %tok, %result, %chan : (!xls.token, i32, !xls.schan<i32, in>) -> !xls.token
     xls.proc.yield %state : i32
+  }
+}
+
+// -----
+
+// CHECK-LABEL: xls.sproc @sproc3
+xls.sproc @sproc3() {
+  next (%state: i32) {
+    %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
+    xls.proc.yield %state (init: %init): i32
+  }
+}
+
+// -----
+
+// expected-error@+1 {{xls.sproc must either be marked as zeroinitializer or contain a yield with initial value}}
+xls.sproc @sproc4() {
+  next (%state: i32) {
+    xls.proc.yield %state : i32
+  }
+}
+
+// -----
+
+// expected-error@+1 {{xls.sproc may not be both as zeroinitializer and contain a yield with initial value}}
+xls.sproc @sproc4() {
+  next (%state: i32) zeroinitializer {
+    %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
+    xls.proc.yield %state (init: %init): i32
   }
 }
 

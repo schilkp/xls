@@ -376,3 +376,10 @@ xls.eproc @eproc2(%state: tuple<i32, i1> loc("state"), %pred: i1 loc("pred")) ze
   xls.proc.yield %next_state, %pred : tuple<i32, i1>, i1
 }
 
+// XLS-LABEL: proc eproc3
+// XLS-SAME:  init=0
+xls.eproc @eproc3(%arg: i32) {
+  %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
+  %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
+  xls.proc.yield %0 (init: %0) : i32
+}

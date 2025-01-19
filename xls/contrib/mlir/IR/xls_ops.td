@@ -1479,11 +1479,12 @@ def Xls_ProcYieldOp : Xls_Op<"proc.yield", [ Pure, ReturnLike, Terminator ]> {
   let description = [{
     Yields an SSA value from the enclosing SprocOp's or EprocOp's region.
   }];
+  let arguments = (ins
+    Variadic<AnyType>:$values,
+    Optional<AnyType>:$init
+  );
 
-  let arguments = (ins Variadic<AnyType>:$values);
-
-  let assemblyFormat = "attr-dict ($values^ `:` type($values))?";
-
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))? (`init` `=` $init^ `:` type($init))?";
   let builders = [
     OpBuilder<(ins), [{
       build($_builder, $_state, ::ValueRange{});
