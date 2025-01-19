@@ -253,7 +253,7 @@ xls.eproc @eproc(%arg: i32) zeroinitializer {
   %tkn2 = xls.send %tkn1, %0, @mychan : tensor<3xi8>
   // %tkn_out, %result = xls.blocking_receive %4, @mychan : !xls.array<3 x i8>
   %tkn3, %val = xls.blocking_receive %tkn1, @mychan : tensor<3xi8>
-  xls.yield %arg : i32
+  xls.proc.yield %arg : i32
 }
 
 // CHECK-LABEL: @call_dslx

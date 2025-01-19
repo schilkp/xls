@@ -8,7 +8,7 @@
 // CHECK-NEXT:    %tkn_out, %result = xls.blocking_receive %0, @rom_arg0 : i32
 // CHECK-NEXT:    %1 = "xls.constant_scalar"() <{value = 1 : i32}> : () -> i32
 // CHECK-NEXT:    %2 = xls.send %tkn_out, %1, @rom_arg1 : i32
-// CHECK-NEXT:    xls.yield %arg0 : i32
+// CHECK-NEXT:    xls.proc.yield %arg0 : i32
 // CHECK-NEXT:  }
 // CHECK-NEXT:  xls.chan @rom_arg0 : i32
 // CHECK-NEXT:  xls.chan @rom_arg1 : i32
@@ -22,7 +22,7 @@
 // CHECK-NEXT:    %1 = xls.send %tkn_out, %result, @proxy_arg2 : i32
 // CHECK-NEXT:    %tkn_out_0, %result_1 = xls.blocking_receive %1, @proxy_arg3 : i32
 // CHECK-NEXT:    %2 = xls.send %tkn_out_0, %result_1, @proxy_arg1 : i32
-// CHECK-NEXT:    xls.yield %arg0 : i32
+// CHECK-NEXT:    xls.proc.yield %arg0 : i32
 // CHECK-NEXT:  }
 // CHECK-NEXT:  xls.chan @proxy_arg0 : i32
 // CHECK-NEXT:  xls.chan @proxy_arg1 : i32
@@ -33,7 +33,7 @@
 // CHECK-NEXT:    %0 = xls.after_all  : !xls.token
 // CHECK-NEXT:    %1 = xls.send %0, %arg0, @fetch_arg0 : i32
 // CHECK-NEXT:    %tkn_out, %result = xls.blocking_receive %1, @fetch_arg1 : i32
-// CHECK-NEXT:    xls.yield %result : i32
+// CHECK-NEXT:    xls.proc.yield %result : i32
 // CHECK-NEXT:  }
 // CHECK-NEXT:  xls.chan @fetch_arg0 : i32
 // CHECK-NEXT:  xls.chan @fetch_arg1 : i32
@@ -53,7 +53,7 @@ xls.sproc @fetch() top {
     %tok1 = xls.after_all : !xls.token
     %tok2 = xls.ssend %tok1, %state, %req : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
     %tok3, %result = xls.sblocking_receive %tok2, %resp : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
-    xls.yield %result : i32
+    xls.proc.yield %result : i32
   }
 }
 
@@ -73,7 +73,7 @@ xls.sproc @proxy(%req: !xls.schan<i32, in>, %resp: !xls.schan<i32, out>) attribu
     %tok3 = xls.ssend %tok2, %result, %rom_req : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
     %tok4, %result2 = xls.sblocking_receive %tok3, %rom_resp : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
     %tok5 = xls.ssend %tok4, %result2, %resp : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -86,7 +86,7 @@ xls.sproc @rom(%req: !xls.schan<i32, in>, %resp: !xls.schan<i32, out>) top attri
     %tok1, %address = xls.sblocking_receive %tok0, %req : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
     %one = "xls.constant_scalar"() {value = 1 : i32} : () -> i32
     %tok2 = xls.ssend %tok1, %one, %resp : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -110,6 +110,6 @@ xls.sproc @main() top {
   next (%req: !xls.schan<i32, out>, %resp: !xls.schan<i32, in>, %state: i32) zeroinitializer {
     %tok = xls.after_all : !xls.token
     %tok2 = xls.ssend %tok, %state, %req : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }

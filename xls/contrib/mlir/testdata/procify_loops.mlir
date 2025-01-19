@@ -24,7 +24,7 @@ xls.sproc @reduce() top attributes {boundary_channel_names = []} {
       // if final iteration.
       scf.yield %sum_next : i32
     } {xls.unroll = false}
-    xls.yield %sum : i32
+    xls.proc.yield %sum : i32
   }
 }
 
@@ -60,7 +60,7 @@ xls.sproc @reduce_nested() top attributes {boundary_channel_names = []} {
       } {xls.unroll = false}
       scf.yield %sum2 : i32
     } {xls.unroll = false}
-    xls.yield %sum : i32
+    xls.proc.yield %sum : i32
   }
 }
 
@@ -97,6 +97,6 @@ xls.sproc @reduce_coalescable() top attributes {boundary_channel_names = []} {
       } {xls.unroll = false}
       scf.yield %sum2 : i32
     } {xls.unroll = true}
-    xls.yield %sum : i32
+    xls.proc.yield %sum : i32
   }
 }

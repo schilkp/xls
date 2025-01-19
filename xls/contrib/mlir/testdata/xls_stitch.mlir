@@ -18,7 +18,7 @@ xls.instantiate_eproc @eproc(@template_send as @send, @template_recv as @recv)
 xls.chan @template_recv : i32
 xls.chan @template_send : i32
 xls.eproc @eproc(%state: i32) zeroinitializer discardable {
-  xls.yield %state : i32
+  xls.proc.yield %state : i32
 }
 
 // -----

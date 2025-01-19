@@ -96,7 +96,7 @@ SprocOp createSprocSkeleton(ImplicitLocOpBuilder& builder, TypeRange inputs,
   builder.setInsertionPointToEnd(&spawns);
   builder.create<YieldOp>(builder.getLoc(), spawns.getArguments());
   builder.setInsertionPointToEnd(&next);
-  builder.create<YieldOp>(builder.getLoc(), stateArgsVec);
+  builder.create<ProcYieldOp>(builder.getLoc(), stateArgsVec);
   return sproc;
 }
 
@@ -279,9 +279,10 @@ void populateController(SprocOp controller, scf::ForOp forOp,
            })
           .getResult(0);
 
-  next.getTerminator()->setOperand(0, finalState);
-  next.getTerminator()->setOperands(1, newInvariantsState.size(),
-                                    newInvariantsState);
+  cast<ProcYieldOp>(next.getTerminator()).getValuesMutable().assign(finalState);
+  cast<ProcYieldOp>(next.getTerminator())
+      .getValuesMutable()
+      .append(newInvariantsState);
 }
 
 // Clones the body of `forOp` into the next region of `body`. The region already

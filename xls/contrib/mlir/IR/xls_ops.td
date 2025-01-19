@@ -1178,15 +1178,15 @@ def Xls_YieldOp : Xls_Op<"yield", [
   Terminator,
   DeclareOpInterfaceMethods<LiteralMemberOpInterface>
 ]> {
-  let summary = "for return op";
+  let summary = "simple return op";
   let description = [{
-    Yields an SSA value from the enclosing LiteralOp, ForOp, EprocOp, or
-    SprocOp region.
+    Yields an SSA value from the enclosing LiteralOp, ForOp, or SprocOp's spawn
+    region.
   }];
 
-  let arguments = (ins Variadic<AnyType>:$results);
+  let arguments = (ins Variadic<AnyType>:$values);
 
-  let assemblyFormat = "attr-dict ($results^ `:` type($results))?";
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))?";
 
   let builders = [
     OpBuilder<(ins), [{
@@ -1469,6 +1469,28 @@ def Xls_CallDslxOp : Xls_Op<"call_dslx", [DeclareOpInterfaceMethods<MemoryEffect
 
 // TODO(jpienaar): Add variant that has string literal.
 
+
+//===----------------------------------------------------------------------===//
+// Procs
+//===----------------------------------------------------------------------===//
+
+def Xls_ProcYieldOp : Xls_Op<"proc.yield", [ Pure, ReturnLike, Terminator ]> {
+  let summary = "proc return op";
+  let description = [{
+    Yields an SSA value from the enclosing SprocOp's or EprocOp's region.
+  }];
+
+  let arguments = (ins Variadic<AnyType>:$values);
+
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))?";
+
+  let builders = [
+    OpBuilder<(ins), [{
+      build($_builder, $_state, ::ValueRange{});
+    }]>
+  ];
+}
+
 //===----------------------------------------------------------------------===//
 // Elaborated procs
 //===----------------------------------------------------------------------===//
@@ -1478,7 +1500,7 @@ def Xls_CallDslxOp : Xls_Op<"call_dslx", [DeclareOpInterfaceMethods<MemoryEffect
 // are the MLIR equivalent of XLS IR procs.
 def Xls_EprocOp : Xls_Op<"eproc", [
   Symbol,
-  SingleBlockImplicitTerminator<"YieldOp">,
+  SingleBlockImplicitTerminator<"ProcYieldOp">,
   IsolatedFromAbove,
   DeclareOpInterfaceMethods<XlsRegionOpInterface>,
   // Callable as it contains calls so should participate in the CallGraph.
@@ -1523,9 +1545,7 @@ def Xls_EprocOp : Xls_Op<"eproc", [
     ::mlir::Block::BlockArgListType getStateArguments() {
       return getBody().getArguments();
     }
-    ::mlir::ValueRange getYieldedArguments() {
-      return getBody().getBlocks().front().getTerminator()->getOperands();
-    }
+    ::mlir::ValueRange getYieldedArguments();
     mlir::Region* getCallableRegion() {
       return &getBody();
     }
@@ -1536,6 +1556,11 @@ def Xls_EprocOp : Xls_Op<"eproc", [
       return {};
     }
     bool canDiscardOnUseEmpty() { return getDiscardable(); }
+  }];
+  let extraClassDefinition = [{
+    ValueRange EprocOp::getYieldedArguments() {
+      return cast<ProcYieldOp>(getBody().getBlocks().front().getTerminator()).getValues();
+    }
   }];
 }
 
@@ -1628,14 +1653,14 @@ def Xls_InstantiateExternEprocOp : Xls_Op<"instantiate_extern_eproc", []> {
 def Xls_NextValueOp : Xls_Op<"next_value", [Pure, SameVariadicOperandSize]> {
   let summary = "Selects the next value to yield for eproc";
   let description = [{
-    The next_value op represents, if feeding into a yield of a elaborated proc,
-    the selected next value to yield. It consists of pairs of values, where the
-    first value is the predicate and the second value is the value to yield if
-    the predicate is true. The operation assumes that the predicates are
-    disjoint at runtime (only one may be true).
+    The next_value op represents, if feeding into a proc.yield of an elaborated
+    proc, the selected next value to yield. It consists of pairs of values,
+    where the first value is the predicate and the second value is the value to
+    yield if the predicate is true. The operation assumes that the predicates
+    are disjoint at runtime (only one may be true).
 
     This opereation has no semantics and can be deleted if it does not feed
-    directly into a xls.yield op.
+    directly into a xls.proc.yield op.
   }];
   let arguments = (ins
     Variadic<I1>:$predicates,
@@ -1693,7 +1718,7 @@ def Xls_SchanOp : Xls_Op<"schan", [Pure, HasParent<"SprocOp">]> {
 
 def Xls_SprocOp : Xls_Op<"sproc", [
   Symbol,
-  SingleBlockImplicitTerminator<"YieldOp">,
+  SingleBlock,
   IsolatedFromAbove,
   CallableOpInterface,
   DeclareOpInterfaceMethods<XlsRegionOpInterface>,
@@ -1740,7 +1765,7 @@ def Xls_SprocOp : Xls_Op<"sproc", [
       next (%chan0: !xls.schan<i32, in>, %state: i32) zeroinitializer {
         %0 = xls.srecv %chan0 : i32
         %1 = xls.add %0, %state : i32
-        xls.yield %1 : i32
+        xls.proc.yield %1 : i32
       }
     }
     ```
@@ -1771,7 +1796,7 @@ def Xls_SprocOp : Xls_Op<"sproc", [
     SizedRegion<1>:$next
   );
   let hasCustomAssemblyFormat = 1;
-  let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 
   let extraClassDeclaration = [{
     ::mlir::ArrayRef<::mlir::BlockArgument> getStateArguments() {
@@ -1801,7 +1826,7 @@ def Xls_SprocOp : Xls_Op<"sproc", [
       return getSpawns().getBlocks().front().getTerminator()->getOperands();
     }
     ::mlir::ValueRange getYieldedArguments() {
-      return getNext().getBlocks().front().getTerminator()->getOperands();
+      return cast<ProcYieldOp>(getNext().getBlocks().front().getTerminator()).getValues();
     }
 
     ::mlir::Region* getCallableRegion() {

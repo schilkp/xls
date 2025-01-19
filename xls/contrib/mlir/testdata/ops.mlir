@@ -400,7 +400,7 @@ xls.chan @vector_chan : tensor<32xi32>
 
 // CHECK-LABEL: xls.eproc @eproc(%arg0: i32) zeroinitializer attributes {min_pipeline_stages = 2 : i64}
 xls.eproc @eproc(%arg: i32) zeroinitializer attributes {min_pipeline_stages = 2 : i64} {
-  xls.yield %arg : i32
+  xls.proc.yield %arg : i32
 }
 
 // CHECK: xls.instantiate_eproc @eproc ()
@@ -444,7 +444,7 @@ xls.sproc @sproc() {
     xls.yield
   }
   next (%state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -454,7 +454,7 @@ xls.sproc @mytarget(%chan: !xls.schan<i32, in>, %chan2: !xls.schan<i32, out>) at
     xls.yield
   }
   next (%state: i1) zeroinitializer {
-    xls.yield %state : i1
+    xls.proc.yield %state : i1
   }
 }
 
@@ -467,7 +467,7 @@ xls.sproc @sproc2() top {
   next (%chan: !xls.schan<i32, in>, %state: i32) zeroinitializer {
     %tok = xls.after_all : !xls.token
     %tok2, %result = xls.sblocking_receive %tok, %chan : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -512,7 +512,7 @@ xls.extern_sproc @external_sproc (arg0: !xls.schan<i32, in>, result0: !xls.schan
 // expected-error@+1 {{yielded state type does not match carried state type ('tuple<i7>' vs 'tuple<i32>'}}
 xls.eproc @eproc(%arg: i32) zeroinitializer {
   %0 = "xls.constant_scalar"() { value = 6 : i7 } : () -> i7
-  xls.yield %0 : i7
+  xls.proc.yield %0 : i7
 }
 
 // -----
@@ -523,7 +523,7 @@ xls.sproc @sproc() {
     xls.yield
   }
   next (%chan: !xls.schan<i32, in>, %state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -535,7 +535,7 @@ xls.sproc @sproc(%input: !xls.schan<i32, in>) {
     xls.yield %input : !xls.schan<i32, in>
   }
   next (%chan: !xls.schan<i32, out>, %state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -547,7 +547,7 @@ xls.sproc @sproc(%input: !xls.schan<i32, in>) {
     xls.yield %input : !xls.schan<i32, in>
   }
   next (%state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -563,14 +563,14 @@ xls.sproc @sproc2() {
     %tok2, %result = xls.sblocking_receive %tok, %chan : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
     // expected-error@+1 {{op channel is not an output channel}}
     %tok3 = xls.ssend %tok, %result, %chan : (!xls.token, i32, !xls.schan<i32, in>) -> !xls.token
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
 // -----
 
 xls.eproc @eproc(%arg: i32) zeroinitializer {
-  xls.yield %arg : i32
+  xls.proc.yield %arg : i32
 }
 
 // expected-error@+1 {{'xls.instantiate_eproc' op '@unknown' does not reference a valid channel}}
@@ -585,5 +585,5 @@ xls.eproc @eproc(%pred: i1, %arg: i32) zeroinitializer {
 // CHECK-SAME:   %[[VAL_1:.*]]: i32
 // CHECK: xls.next_value {{\[}}%[[VAL_0]], %[[VAL_1]]], {{\[}}%[[VAL_0]], %[[VAL_1]]] : (i32, i32) -> i32
   %0 = xls.next_value [%pred, %arg], [%pred, %arg] : (i32, i32) -> i32
-  xls.yield %pred, %0 : i1, i32
+  xls.proc.yield %pred, %0 : i1, i32
 }

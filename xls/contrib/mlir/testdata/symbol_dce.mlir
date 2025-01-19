@@ -14,7 +14,7 @@ xls.sproc @sproc(%arg0: !xls.schan<i32, in>) {
     xls.yield
   }
   next(%state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }
 
@@ -27,6 +27,6 @@ xls.sproc @top_sproc(%arg0: !xls.schan<i32, in>) top {
     xls.yield
   }
   next(%state: i32) zeroinitializer {
-    xls.yield %state : i32
+    xls.proc.yield %state : i32
   }
 }

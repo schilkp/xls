@@ -213,13 +213,13 @@ func.func @fptosi8(%arg0: bf16) -> i8 attributes { "xls" = true } {
 // CHECK-LABEL: @sproc
 // CHECK: next (
 // CHECK-NEXT: %[[X:.*]] = xls.add
-// CHECK-NEXT: xls.yield %[[X]] : i32
+// CHECK-NEXT: xls.proc.yield %[[X]] : i32
 xls.sproc @sproc(%arg0: !xls.schan<i32, in>) top {
   spawns {
     xls.yield
   }
   next(%state: i32) zeroinitializer {
     %0 = arith.addi %state, %state : i32
-    xls.yield %0 : i32
+    xls.proc.yield %0 : i32
   }
 }

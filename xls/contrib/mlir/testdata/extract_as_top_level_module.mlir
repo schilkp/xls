@@ -34,7 +34,7 @@ module attributes {test.name = "eproc"} {
   xls.eproc @eproc(%arg0: i32, %arg1: !xls.token, %arg2: i32, %arg3: i1) zeroinitializer {
     %0 = arith.constant 1 : i32
     %r = xls.send %arg1, %arg2, %arg3, @yeschan : i32
-    xls.yield %arg0, %arg1, %arg2, %arg3 : i32, !xls.token, i32, i1
+    xls.proc.yield %arg0, %arg1, %arg2, %arg3 : i32, !xls.token, i32, i1
   }
 }
 
@@ -91,7 +91,7 @@ module attributes {test.name = "sproc"} {
       xls.yield
     }
     next(%state: i32) zeroinitializer {
-      xls.yield %state : i32
+      xls.proc.yield %state : i32
     }
   }
 
@@ -101,7 +101,7 @@ module attributes {test.name = "sproc"} {
       xls.yield
     }
     next(%state: i32) zeroinitializer {
-      xls.yield %state : i32
+      xls.proc.yield %state : i32
     }
   }
 
@@ -111,7 +111,7 @@ module attributes {test.name = "sproc"} {
       xls.yield
     }
     next(%state: i32) zeroinitializer {
-      xls.yield %state : i32
+      xls.proc.yield %state : i32
     }
   }
 }

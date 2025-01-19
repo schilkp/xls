@@ -355,7 +355,7 @@ xls.eproc @eproc(%arg0: i32 loc("a"), %arg1: tuple<i32, i1> loc("b"),
   // XLS: next_value(param=a, value=a, predicate=pred
   // XLS: next_value(param=a, value=[[literal]], predicate=[[not_pred]]
   %2 = xls.next_value [%arg2, %arg0], [%not_pred, %0] : (i32, i32) -> i32
-  xls.yield %2, %arg1, %arg2, %arg3 : i32, tuple<i32, i1>, i1, bf16
+  xls.proc.yield %2, %arg1, %arg2, %arg3 : i32, tuple<i32, i1>, i1, bf16
 }
 
 // XLS-LABEL: proc eproc2({{.*}}: (bits[32], bits[1]), {{.*}}: bits[1], init={
@@ -373,6 +373,6 @@ xls.eproc @eproc2(%state: tuple<i32, i1> loc("state"), %pred: i1 loc("pred")) ze
   // XLS: next_value(param=state, value=state, predicate=pred
   // XLS: next_value(param=state, value=[[new_tuple]], predicate=[[not_pred]]
   %next_state = xls.next_value [%pred, %state], [%not_pred, %new_tuple] : (tuple<i32, i1>, tuple<i32, i1>) -> tuple<i32, i1>
-  xls.yield %next_state, %pred : tuple<i32, i1>, i1
+  xls.proc.yield %next_state, %pred : tuple<i32, i1>, i1
 }
 

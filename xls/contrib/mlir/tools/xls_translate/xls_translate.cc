@@ -1155,7 +1155,7 @@ FailureOr<BValue> convertFunction(TranslationState& translation_state,
             TraceOp,
             // Misc. side-effecting ops
             GateOp>([&](auto t) { return convertOp(t, translation_state, fb); })
-        .Case<mlir::func::ReturnOp, YieldOp>([&](auto ret) {
+        .Case<mlir::func::ReturnOp, YieldOp, ProcYieldOp>([&](auto ret) {
           if (ret.getNumOperands() == 1) {
             return out = value_map[ret.getOperand(0)];
           }

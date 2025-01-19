@@ -5,5 +5,5 @@ xls.chan @vector_chan : !xls.array<32 x i32>
 
 // CHECK: top proc eproc
 xls.eproc @eproc(%arg: i32) zeroinitializer {
-  xls.yield %arg : i32
+  xls.proc.yield %arg : i32
 }

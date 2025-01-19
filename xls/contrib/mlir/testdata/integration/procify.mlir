@@ -47,7 +47,7 @@ xls.sproc @reduce() top attributes {boundary_channel_names = []} {
       xls.trace %tkn, "sum_next: {}, {}"(%iv_i32, %sum_next) : i32, i32
       scf.yield %sum_next : i32
     }
-    xls.yield %sum : i32
+    xls.proc.yield %sum : i32
   }
 }
 
@@ -64,7 +64,7 @@ xls.sproc @reduce() top attributes {boundary_channel_names = []} {
 // CHECK-MLIR:    %1 = xls.add %result, %result_1 : i32
 // CHECK-MLIR:    %2 = xls.trace %0, "sum_next: {}, {}"(%result, %1) : i32, i32
 // CHECK-MLIR:    %3 = xls.send %0, %1, @body_result_0 : i32
-// CHECK-MLIR:    xls.yield %arg0 : i32
+// CHECK-MLIR:    xls.proc.yield %arg0 : i32
 // CHECK-MLIR:  }
 // CHECK-MLIR:  xls.eproc @reduce_for_controller_1_1(%arg0: i32) zeroinitializer {
 // CHECK-MLIR:    %0 = "xls.constant_scalar"() <{value = 0 : i32}> : () -> i32
@@ -83,13 +83,13 @@ xls.sproc @reduce() top attributes {boundary_channel_names = []} {
 // CHECK-MLIR:    %11 = xls.send %5, %arg0, %8, @body_arg_0 : i32
 // CHECK-MLIR:    %12 = xls.add %arg0, %1 : i32
 // CHECK-MLIR:    %13 = xls.sel %7 in  [%12] else %0 : (i1, [i32], i32) -> i32
-// CHECK-MLIR:    xls.yield %13 : i32
+// CHECK-MLIR:    xls.proc.yield %13 : i32
 // CHECK-MLIR:  }
 // CHECK-MLIR:  xls.eproc @reduce_2_0(%arg0: i32) zeroinitializer attributes {min_pipeline_stages = 2 : i64} {
 // CHECK-MLIR:    %0 = xls.after_all  : !xls.token
 // CHECK-MLIR:    %1 = xls.send %0, %arg0, @for_arg_0 : i32
 // CHECK-MLIR:    %2 = xls.after_all %1 : !xls.token
 // CHECK-MLIR:    %tkn_out, %result = xls.blocking_receive %2, @for_result_0 : i32
-// CHECK-MLIR:    xls.yield %result : i32
+// CHECK-MLIR:    xls.proc.yield %result : i32
 // CHECK-MLIR:  }
 // CHECK-MLIR:}

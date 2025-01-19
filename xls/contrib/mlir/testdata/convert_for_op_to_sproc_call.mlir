@@ -12,7 +12,7 @@
 // CHECK:      %1 = arith.addi %result_1, %result_1 : i32
 // CHECK:      %2 = xls.after_all  : !xls.token
 // CHECK:      %3 = xls.ssend %2, %1, %arg2 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-// CHECK:      xls.yield %arg3 : i32
+// CHECK:      xls.proc.yield %arg3 : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_zeroes_for_controller(%arg0: !xls.schan<i32, in>, %arg1: !xls.schan<i32, out>) {
@@ -51,7 +51,7 @@
 // CHECK:        %9 = arith.addi %arg5, %c1_i32 : i32
 // CHECK:        scf.yield %9 : i32
 // CHECK:      }
-// CHECK:      xls.yield %3 : i32
+// CHECK:      xls.proc.yield %3 : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_zeroes() top attributes {boundary_channel_names = [], min_pipeline_stages = 2 : i64} {
@@ -70,7 +70,7 @@
 // CHECK:      %1 = xls.ssend %0, %c0_i32, %arg0 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
 // CHECK:      %2 = xls.after_all %1 : !xls.token
 // CHECK:      %tkn_out, %result = xls.sblocking_receive %2, %arg1 : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
-// CHECK:      xls.yield %result : i32
+// CHECK:      xls.proc.yield %result : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:}
@@ -89,7 +89,7 @@ module @reduce_zeroes {
         %sum_next = arith.addi %sum_iter, %sum_iter : i32
         scf.yield %sum_next : i32
       }
-      xls.yield %sum : i32
+      xls.proc.yield %sum : i32
     }
   }
 }
@@ -111,7 +111,7 @@ module @reduce_zeroes {
 // CHECK:      %2 = arith.addi %1, %c1_i32 : i32
 // CHECK:      %3 = xls.after_all  : !xls.token
 // CHECK:      %4 = xls.ssend %3, %2, %arg3 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-// CHECK:      xls.yield %arg4 : i32
+// CHECK:      xls.proc.yield %arg4 : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_invariants_for_controller(%arg0: !xls.schan<i32, in>, %arg1: !xls.schan<i32, in>, %arg2: !xls.schan<i32, out>) {
@@ -155,7 +155,7 @@ module @reduce_zeroes {
 // CHECK:        %11 = arith.addi %arg7, %c1_i32 : i32
 // CHECK:        scf.yield %11 : i32
 // CHECK:      }
-// CHECK:      xls.yield %3, %1#1 : i32, i32
+// CHECK:      xls.proc.yield %3, %1#1 : i32, i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_invariants() top attributes {boundary_channel_names = [], min_pipeline_stages = 2 : i64} {
@@ -178,7 +178,7 @@ module @reduce_zeroes {
 // CHECK:      %3 = xls.ssend %1, %0, %arg1 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
 // CHECK:      %4 = xls.after_all %2, %3 : !xls.token
 // CHECK:      %tkn_out, %result = xls.sblocking_receive %4, %arg2 : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
-// CHECK:      xls.yield %result : i32
+// CHECK:      xls.proc.yield %result : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:}
@@ -200,7 +200,7 @@ module @reduce_invariants {
         %sum_next2 = arith.addi %sum_next, %step_i32 : i32
         scf.yield %sum_next2 : i32
       }
-      xls.yield %sum : i32
+      xls.proc.yield %sum : i32
     }
   }
 }
@@ -220,7 +220,7 @@ module @reduce_invariants {
 // CHECK:      %1 = arith.addi %result_1, %c0_i32 : i32
 // CHECK:      %2 = xls.after_all  : !xls.token
 // CHECK:      %3 = xls.ssend %2, %1, %arg2 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
-// CHECK:      xls.yield %arg3 : i32
+// CHECK:      xls.proc.yield %arg3 : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_clone_for_controller(%arg0: !xls.schan<i32, in>, %arg1: !xls.schan<i32, out>) {
@@ -259,7 +259,7 @@ module @reduce_invariants {
 // CHECK:        %9 = arith.addi %arg5, %c1_i32 : i32
 // CHECK:        scf.yield %9 : i32
 // CHECK:      }
-// CHECK:      xls.yield %3 : i32
+// CHECK:      xls.proc.yield %3 : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:  xls.sproc @reduce_clone() top attributes {boundary_channel_names = [], min_pipeline_stages = 2 : i64} {
@@ -278,7 +278,7 @@ module @reduce_invariants {
 // CHECK:      %1 = xls.ssend %0, %c0_i32, %arg0 : (!xls.token, i32, !xls.schan<i32, out>) -> !xls.token
 // CHECK:      %2 = xls.after_all %1 : !xls.token
 // CHECK:      %tkn_out, %result = xls.sblocking_receive %2, %arg1 : (!xls.token, !xls.schan<i32, in>) -> (!xls.token, i32)
-// CHECK:      xls.yield %result : i32
+// CHECK:      xls.proc.yield %result : i32
 // CHECK:    }
 // CHECK:  }
 // CHECK:}
@@ -297,7 +297,7 @@ module @reduce_clone {
         %sum_next = arith.addi %sum_iter, %sum_0 : i32
         scf.yield %sum_next : i32
       }
-      xls.yield %sum : i32
+      xls.proc.yield %sum : i32
     }
   }
 }

@@ -606,7 +606,19 @@ ParseResult SprocOp::parse(OpAsmParser& parser, OperationState& result) {
   return success();
 }
 
-LogicalResult SprocOp::verify() {
+LogicalResult SprocOp::verifyRegions() {
+  if (!getSpawns().empty() &&
+      !mlir::isa<YieldOp>(getSpawns().front().getTerminator())) {
+    return emitOpError()
+           << "spawns region must be terminated by a xls.yield op";
+  }
+
+  if (!getNext().empty() &&
+      !mlir::isa<ProcYieldOp>(getNext().front().getTerminator())) {
+    return emitOpError()
+           << "next region must be terminated by a xls.proc.yield op";
+  }
+
   TupleType stateType =
       TupleType::get(getContext(), TypeRange(getStateArguments()));
   TupleType yieldedType =

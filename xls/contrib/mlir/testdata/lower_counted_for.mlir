@@ -122,7 +122,7 @@ func.func @triple_nest(%arg0: i32) -> i32 attributes {xls = true} {
 // CHECK-DAG:       %[[VAL_3:.*]] = arith.constant 1 : index
 // CHECK-DAG:       %[[VAL_4:.*]] = arith.constant 0 : i32
 // CHECK:           %[[VAL_5:.*]] = "xls.counted_for"(%[[VAL_4]], %[[VAL_0]]) <{stride = 1 : i64, to_apply = @for_body_4, trip_count = 1024 : i64}> : (i32, i32) -> i32
-// CHECK:           xls.yield %[[VAL_5]] : i32
+// CHECK:           xls.proc.yield %[[VAL_5]] : i32
 xls.eproc @proc_reduce(%arg0: i32) zeroinitializer  {
   %c0 = arith.constant 0 : index
   %c1024 = arith.constant 1024 : index
@@ -134,5 +134,5 @@ xls.eproc @proc_reduce(%arg0: i32) zeroinitializer  {
     %2 = arith.addi %carry, %invariant : i32
     xls.yield %2 : i32
   } {trip_count = 1024 : i64} : (i32, i32) -> i32
-  xls.yield %0 : i32
+  xls.proc.yield %0 : i32
 }

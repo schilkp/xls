@@ -5,7 +5,7 @@ xls.sproc @fn(%arg0: !xls.schan<tensor<8xi32>, in>) {
     xls.yield
   }
   next(%arg1: i32) zeroinitializer {
-    xls.yield %arg1 : i32
+    xls.proc.yield %arg1 : i32
   }
 }
 
@@ -14,7 +14,7 @@ xls.sproc @fn2(%arg0: !xls.schan<tensor<8xi32>, out>) {
     xls.yield
   }
   next(%arg1: i32) zeroinitializer {
-    xls.yield %arg1 : i32
+    xls.proc.yield %arg1 : i32
   }
 }
 
@@ -26,7 +26,7 @@ xls.sproc @fn2(%arg0: !xls.schan<tensor<8xi32>, out>) {
 // CHECK:      xls.yield
 // CHECK:    }
 // CHECK:    next (%arg0: i32) zeroinitializer {
-// CHECK:      xls.yield %arg0 : i32
+// CHECK:      xls.proc.yield %arg0 : i32
 // CHECK:    }
 // CHECK:  }
 xls.sproc @consume_arg(%arg0: !xls.schan<tensor<8xi32>, in>) top {
@@ -40,7 +40,7 @@ xls.sproc @consume_arg(%arg0: !xls.schan<tensor<8xi32>, in>) top {
     %tkn_out, %result = xls.sblocking_receive %0, %arg0 : (!xls.token, !xls.schan<tensor<8xi32>, in>) -> (!xls.token, tensor<8xi32>)
     %1 = xls.after_all  : !xls.token
     %2 = xls.ssend %1, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
-    xls.yield %arg4 : i32
+    xls.proc.yield %arg4 : i32
   }
 }
 
@@ -52,7 +52,7 @@ xls.sproc @consume_arg(%arg0: !xls.schan<tensor<8xi32>, in>) top {
 // CHECK:      xls.yield
 // CHECK:    }
 // CHECK:    next (%arg0: i32) zeroinitializer {
-// CHECK:      xls.yield %arg0 : i32
+// CHECK:      xls.proc.yield %arg0 : i32
 // CHECK:    }
 // CHECK:  }
 xls.sproc @produce_result(%arg0: !xls.schan<tensor<8xi32>, out>) top {
@@ -65,7 +65,7 @@ xls.sproc @produce_result(%arg0: !xls.schan<tensor<8xi32>, out>) top {
     %0 = xls.after_all  : !xls.token
     %tkn_out, %result = xls.sblocking_receive %0, %arg0 : (!xls.token, !xls.schan<tensor<8xi32>, in>) -> (!xls.token, tensor<8xi32>)
     %2 = xls.ssend %0, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
-    xls.yield %arg2 : i32
+    xls.proc.yield %arg2 : i32
   }
 }
 
@@ -78,7 +78,7 @@ xls.sproc @produce_result(%arg0: !xls.schan<tensor<8xi32>, out>) top {
 // CHECK:      xls.yield
 // CHECK:    }
 // CHECK:    next (%arg0: i32) zeroinitializer {
-// CHECK:      xls.yield %arg0 : i32
+// CHECK:      xls.proc.yield %arg0 : i32
 // CHECK:    }
 // CHECK:  }
 xls.sproc @contract_away_interior_channel() top {
@@ -93,7 +93,7 @@ xls.sproc @contract_away_interior_channel() top {
     %0 = xls.after_all  : !xls.token
     %tkn_out, %result = xls.sblocking_receive %0, %arg0 : (!xls.token, !xls.schan<tensor<8xi32>, in>) -> (!xls.token, tensor<8xi32>)
     %2 = xls.ssend %0, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
-    xls.yield %arg2 : i32
+    xls.proc.yield %arg2 : i32
   }
 }
 
@@ -120,7 +120,7 @@ xls.sproc @receive_used_twice() top {
     %tkn_out, %result = xls.sblocking_receive %0, %arg0 : (!xls.token, !xls.schan<tensor<8xi32>, in>) -> (!xls.token, tensor<8xi32>)
     %2 = xls.ssend %0, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
     %3 = xls.ssend %0, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
-    xls.yield %arg2 : i32
+    xls.proc.yield %arg2 : i32
   }
 }
 
@@ -146,7 +146,7 @@ xls.sproc @send_predicated() top {
     %tkn_out, %result = xls.sblocking_receive %0, %arg0 : (!xls.token, !xls.schan<tensor<8xi32>, in>) -> (!xls.token, tensor<8xi32>)
     %true = arith.constant 1 : i1
     %2 = xls.ssend %0, %result, %arg1, %true : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>, i1) -> !xls.token
-    xls.yield %arg2 : i32
+    xls.proc.yield %arg2 : i32
   }
 }
 
@@ -172,6 +172,6 @@ xls.sproc @recv_predicated() top {
     %true = arith.constant 1 : i1
     %tkn_out, %result = xls.sblocking_receive %0, %arg0, %true : (!xls.token, !xls.schan<tensor<8xi32>, in>, i1) -> (!xls.token, tensor<8xi32>)
     %2 = xls.ssend %0, %result, %arg1 : (!xls.token, tensor<8xi32>, !xls.schan<tensor<8xi32>, out>) -> !xls.token
-    xls.yield %arg2 : i32
+    xls.proc.yield %arg2 : i32
   }
 }

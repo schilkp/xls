@@ -227,7 +227,7 @@ xls.chan @mychan : !xls.array<3 x i8>
 // CHECK:           %[[VAL_5:.*]] = xls.after_all  : !xls.token
 // CHECK:           %[[VAL_6:.*]] = xls.send %[[VAL_5]], %[[VAL_4]], @mychan : i24
 // CHECK:           %[[VAL_7:.*]], %[[VAL_8:.*]] = xls.blocking_receive %[[VAL_5]], @mychan : i24
-// CHECK:           xls.yield %[[VAL_0]] : i32
+// CHECK:           xls.proc.yield %[[VAL_0]] : i32
 // CHECK:         }
 xls.eproc @eproc(%arg0: i32) zeroinitializer {
   %0 = "xls.constant_scalar"() <{value = 0 : i8}> : () -> i8
@@ -237,7 +237,7 @@ xls.eproc @eproc(%arg0: i32) zeroinitializer {
   %4 = xls.after_all  : !xls.token
   %5 = xls.send %4, %3, @mychan : !xls.array<3 x i8>
   %tkn_out, %result = xls.blocking_receive %4, @mychan : !xls.array<3 x i8>
-  xls.yield %arg0 : i32
+  xls.proc.yield %arg0 : i32
 }
 
 // CHECK-LABEL:   func.func @call_dslx(
