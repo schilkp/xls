@@ -1283,7 +1283,8 @@ def Xls_CallDslxOp : Xls_Op<"call_dslx", [DeclareOpInterfaceMethods<MemoryEffect
 //===----------------------------------------------------------------------===//
 //
 // Elaborated procs are a form of lowered proc that has its channels "baked in"
-// and cannot spawn new procs. Trees of procs can be lowered to eprocs.
+// and cannot spawn new procs. Trees of procs can be lowered to eprocs. They
+// are the MLIR equivalent of XLS IR procs.
 def Xls_EprocOp : Xls_Op<"eproc", [
   Symbol,
   SingleBlockImplicitTerminator<"YieldOp">,
