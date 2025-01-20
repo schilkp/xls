@@ -1474,21 +1474,31 @@ def Xls_CallDslxOp : Xls_Op<"call_dslx", [DeclareOpInterfaceMethods<MemoryEffect
 // Procs
 //===----------------------------------------------------------------------===//
 
-def Xls_ProcYieldOp : Xls_Op<"proc.yield", [ Pure, ReturnLike, Terminator ]> {
+def Xls_ProcYieldOp : Xls_Op<"proc.yield", [
+  Pure,
+  ReturnLike,
+  Terminator,
+  AttrSizedOperandSegments
+]> {
   let summary = "proc return op";
   let description = [{
     Yields an SSA value from the enclosing SprocOp's or EprocOp's region.
   }];
   let arguments = (ins
+    Optional<AnyType>:$init,
     Variadic<AnyType>:$values,
-    Optional<AnyType>:$init
+    UnitAttr:$hasInit
   );
-
-  let assemblyFormat = "attr-dict ($values^ `:` type($values))? (`init` `=` $init^ `:` type($init))?";
+  let assemblyFormat = "attr-dict ($values^ `:` type($values))? custom<ProcYieldInit>($init, type($init), $hasInit)";
   let builders = [
     OpBuilder<(ins), [{
-      build($_builder, $_state, ::ValueRange{});
+      // TODO: !@#!@#!@# Manage AttrSizedOperandSegments
+      build($_builder, $_state, ::Value{}, ::ValueRange{});
+    }]>,
+    OpBuilder<(ins "::mlir::ValueRange":$values), [{
+      build($_builder, $_state, /*init=*/::mlir::Value{}, values, /*hasInit=*/UnitAttr());
     }]>
+
   ];
 }
 
@@ -1533,6 +1543,7 @@ def Xls_EprocOp : Xls_Op<"eproc", [
   }];
   let arguments = (ins
     SymbolNameAttr:$sym_name,
+    UnitAttr:$zeroinitializer,
     UnitAttr:$discardable,
     DefaultValuedAttr<I64Attr, "1">:$min_pipeline_stages
   );
@@ -1540,13 +1551,15 @@ def Xls_EprocOp : Xls_Op<"eproc", [
     SizedRegion<1>:$body
   );
   let hasCustomAssemblyFormat = 1;
-  let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 
   let extraClassDeclaration = [{
     ::mlir::Block::BlockArgListType getStateArguments() {
       return getBody().getArguments();
     }
+    ProcYieldOp getNextYieldOp();
     ::mlir::ValueRange getYieldedArguments();
+    Value getInitValue();
     mlir::Region* getCallableRegion() {
       return &getBody();
     }
@@ -1559,8 +1572,19 @@ def Xls_EprocOp : Xls_Op<"eproc", [
     bool canDiscardOnUseEmpty() { return getDiscardable(); }
   }];
   let extraClassDefinition = [{
+    ProcYieldOp EprocOp::getNextYieldOp() {
+      return cast<ProcYieldOp>(getBody().getBlocks().front().getTerminator());
+    }
     ValueRange EprocOp::getYieldedArguments() {
-      return cast<ProcYieldOp>(getBody().getBlocks().front().getTerminator()).getValues();
+      return getNextYieldOp().getValues();
+    }
+    Value EprocOp::getInitValue() {
+      if (getZeroinitializer()) {
+        return Value();
+      } else {
+        assert(getNextYieldOp().getHasInit);
+        return getNextYieldOp().getInit();
+      }
     }
   }];
 }
@@ -1789,6 +1813,7 @@ def Xls_SprocOp : Xls_Op<"sproc", [
   let arguments = (ins
     SymbolNameAttr:$sym_name,
     BoolAttr:$is_top,
+    UnitAttr:$zeroinitializer,
     OptionalAttr<ArrayAttr>:$boundary_channel_names,
     DefaultValuedAttr<I64Attr, "1">:$min_pipeline_stages
   );
@@ -1826,8 +1851,19 @@ def Xls_SprocOp : Xls_Op<"sproc", [
       }
       return getSpawns().getBlocks().front().getTerminator()->getOperands();
     }
+    ProcYieldOp getNextYieldOp() {
+      return cast<ProcYieldOp>(getNext().getBlocks().front().getTerminator());
+    }
     ::mlir::ValueRange getYieldedArguments() {
-      return cast<ProcYieldOp>(getNext().getBlocks().front().getTerminator()).getValues();
+      return getNextYieldOp().getValues();
+    }
+    Value getInitValue() {
+      if (getZeroinitializer()) {
+        return Value();
+      } else {
+        assert(getNextYieldOp().getHasInit);
+        return getNextYieldOp().getInit();
+      }
     }
 
     ::mlir::Region* getCallableRegion() {

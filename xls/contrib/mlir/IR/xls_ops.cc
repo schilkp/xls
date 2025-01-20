@@ -351,6 +351,40 @@ LogicalResult InstantiateEprocOp::verifySymbolUses(
   return success();
 }
 
+ParseResult parseProcYieldInit(
+    OpAsmParser& parser, std::optional<OpAsmParser::UnresolvedOperand>& init,
+    Type& initType, UnitAttr& hasInitAttr) {
+  // (`(` `init` `=` value `:` type `)`)?
+  if (!parser.parseOptionalLParen()) {
+    OpAsmParser::UnresolvedOperand init_value;
+    if (parser.parseKeyword("init") || parser.parseEqual() ||
+        parser.parseOperand(init_value) || parser.parseColonType(initType) ||
+        parser.parseRParen()) {
+      return failure();
+    }
+    init = init_value;
+    hasInitAttr = UnitAttr::get(parser.getContext());
+    return success();
+  } else {
+    init = std::nullopt;
+    initType = Type();
+    hasInitAttr = UnitAttr();
+    return success();
+  }
+}
+
+void printProcYieldInit(OpAsmPrinter& printer, Operation* op, Value init,
+                        Type init_type, ::mlir::UnitAttr hasInitAttr) {
+  if (hasInitAttr) {
+    printer << "(";
+    printer << "init= ";
+    printer.printOperand(init);
+    printer << " : ";
+    printer.printType(init_type);
+    printer << ")";
+  }
+}
+
 }  // namespace mlir::xls
 
 namespace {
@@ -449,11 +483,15 @@ void EprocOp::print(OpAsmPrinter& printer) {
   printer << '(';
   llvm::interleaveComma(getBody().getArguments(), printer.getStream(),
                         [&](auto arg) { printer.printRegionArgument(arg); });
-  printer << ") zeroinitializer";
+  printer << ")";
+  if (getZeroinitializer()) {
+    printer << " zeroinitializer";
+  }
   if (getDiscardable()) {
     printer << " discardable";
   }
-  SmallVector<StringRef> elideAttrNames = {"sym_name", "discardable"};
+  SmallVector<StringRef> elideAttrNames = {"sym_name", "discardable",
+                                           "zeroinitializer"};
   if (getMinPipelineStages() == 1) {
     elideAttrNames.push_back("min_pipeline_stages");
   }
@@ -477,8 +515,8 @@ ParseResult EprocOp::parse(OpAsmParser& parser, OperationState& result) {
     return failure();
   }
 
-  if (parser.parseKeyword("zeroinitializer")) {
-    return failure();
+  if (!parser.parseOptionalKeyword("zeroinitializer")) {
+    result.addAttribute("zeroinitializer", UnitAttr::get(parser.getContext()));
   }
   if (succeeded(parser.parseOptionalKeyword("discardable"))) {
     result.addAttribute("discardable", UnitAttr::get(parser.getContext()));
@@ -491,7 +529,7 @@ ParseResult EprocOp::parse(OpAsmParser& parser, OperationState& result) {
   return parser.parseRegion(*body, args);
 }
 
-LogicalResult EprocOp::verify() {
+LogicalResult EprocOp::verifyRegions() {
   TupleType stateType =
       TupleType::get(getContext(), TypeRange(getStateArguments()));
   TupleType yieldedType =
@@ -501,6 +539,10 @@ LogicalResult EprocOp::verify() {
            << "yielded state type does not match carried state type ("
            << yieldedType << " vs " << stateType << ")";
   }
+  if (!(getZeroinitializer() ^ getNextYieldOp().getHasInit())) {
+    return emitOpError() << "xls.eproc must feature an init value or be marked as zeroinitializer, but not both";
+  }
+
   return success();
 }
 
@@ -542,7 +584,7 @@ void SprocOp::print(OpAsmPrinter& printer) {
   if (getIsTop()) {
     printer << " top";
   }
-  SmallVector<StringRef> elideAttrNames = {"sym_name", "is_top"};
+  SmallVector<StringRef> elideAttrNames = {"sym_name", "is_top", "zeroinitializer"};
   if (getMinPipelineStages() == 1) {
     elideAttrNames.push_back("min_pipeline_stages");
   }
@@ -557,7 +599,10 @@ void SprocOp::print(OpAsmPrinter& printer) {
   printer << "next (";
   llvm::interleaveComma(getNext().getArguments(), printer.getStream(),
                         [&](auto arg) { printer.printRegionArgument(arg); });
-  printer << ") zeroinitializer ";
+  printer << ") ";
+  if (getZeroinitializer()) {
+    printer << "zeroinitializer ";
+  }
   printer.printRegion(getNext(), /*printEntryBlockArgs=*/false);
   printer.decreaseIndent();
   printer.printNewline();
@@ -598,9 +643,12 @@ ParseResult SprocOp::parse(OpAsmParser& parser, OperationState& result) {
   SmallVector<OpAsmParser::Argument> nextArgs;
   if (parser.parseKeyword("next") ||
       parser.parseArgumentList(nextArgs, OpAsmParser::Delimiter::Paren,
-                               /*allowType=*/true) ||
-      parser.parseKeyword("zeroinitializer") ||
-      parser.parseRegion(*next, nextArgs) || parser.parseRBrace()) {
+                               /*allowType=*/true)) {
+  }
+  if (!parser.parseOptionalKeyword("zeroinitializer")) {
+    result.addAttribute("zeroinitializer", UnitAttr::get(parser.getContext()));
+  }
+  if (parser.parseRegion(*next, nextArgs) || parser.parseRBrace()) {
     return failure();
   }
   return success();
@@ -642,6 +690,10 @@ LogicalResult SprocOp::verifyRegions() {
                            << " but spawns yields channel of type "
                            << yielded.getType();
     }
+  }
+
+  if (!(getZeroinitializer() ^ getNextYieldOp().getHasInit())) {
+    return emitOpError() << "xls.sproc must feature an init value or be marked as zeroinitializer, but not both";
   }
 
   return success();

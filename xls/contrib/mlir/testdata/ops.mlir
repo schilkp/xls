@@ -1,4 +1,4 @@
-// RUN: xls_opt %s --split-input-file --verify-diagnostics -- 2>&1 | FileCheck %s
+// RUN: xls_opt %s --split-input-file --verify-diagnostics -- 2>&1 | FileCheck %s --dump-input-filter=all
 
 // CHECK-LABEL: func @identity
 func.func @identity(%arg0: tensor<32xi8>) -> tensor<32xi8> {
@@ -528,13 +528,17 @@ xls.eproc @eproc2(%arg: i32) zeroinitializer {
 // CHECK-LABEL: xls.eproc @eproc3
 xls.eproc @eproc3(%arg: i32) {
   %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
-  %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
-  xls.proc.yield %0 (init: %0) : i32
+  %init = xls.literal : tuple<i32> {
+    %2 = "xls.constant_scalar"() <{value = 10 : i32}> : () -> i32
+    %final = "xls.tuple"(%2) : (i32) -> tuple<i32>
+    xls.yield %final : tuple<i32>
+  }
+  xls.proc.yield %0 : i32 (init = %init : tuple<i32>)
 }
 
 // -----
 
-// expected-error@+1 {{xls.eproc must either be marked as zeroinitializer or contain a yield with initial value}}
+// expected-error@+1 {{xls.eproc must feature an init value or be marked as zeroinitializer, but not both}}
 xls.eproc @eproc4(%arg: i32) {
   %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
   xls.proc.yield %0 : i32
@@ -542,11 +546,15 @@ xls.eproc @eproc4(%arg: i32) {
 
 // -----
 
-// expected-error@+1 {{xls.eproc may not be both as zeroinitializer and contain a yield with initial value}}
+// expected-error@+1 {{xls.eproc must feature an init value or be marked as zeroinitializer, but not both}}
 xls.eproc @eproc4(%arg: i32) zeroinitializer {
   %0 = "xls.constant_scalar"() { value = 6 : i32 } : () -> i32
-  %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
-  xls.proc.yield %0 : i32
+  %init = xls.literal : tuple<i32> {
+    %2 = "xls.constant_scalar"() <{value = 10 : i32}> : () -> i32
+    %final = "xls.tuple"(%2) : (i32) -> tuple<i32>
+    xls.yield %final : tuple<i32>
+  }
+  xls.proc.yield %0 : i32 (init = %init : tuple<i32>)
 }
 
 // -----
@@ -605,16 +613,26 @@ xls.sproc @sproc2() {
 
 // CHECK-LABEL: xls.sproc @sproc3
 xls.sproc @sproc3() {
+  spawns {
+    xls.yield
+  }
   next (%state: i32) {
-    %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
-    xls.proc.yield %state (init: %init): i32
+    %init = xls.literal : tuple<i32> {
+      %2 = "xls.constant_scalar"() <{value = 10 : i32}> : () -> i32
+      %final = "xls.tuple"(%2) : (i32) -> tuple<i32>
+      xls.yield %final : tuple<i32>
+    }
+    xls.proc.yield %state : i32 (init = %init : tuple<i32>)
   }
 }
 
 // -----
 
-// expected-error@+1 {{xls.sproc must either be marked as zeroinitializer or contain a yield with initial value}}
+// expected-error@+1 {{xls.sproc must feature an init value or be marked as zeroinitializer, but not both}}
 xls.sproc @sproc4() {
+  spawns {
+    xls.yield
+  }
   next (%state: i32) {
     xls.proc.yield %state : i32
   }
@@ -622,11 +640,18 @@ xls.sproc @sproc4() {
 
 // -----
 
-// expected-error@+1 {{xls.sproc may not be both as zeroinitializer and contain a yield with initial value}}
+// expected-error@+1 {{xls.sproc must feature an init value or be marked as zeroinitializer, but not both}}
 xls.sproc @sproc4() {
+  spawns {
+    xls.yield
+  }
   next (%state: i32) zeroinitializer {
-    %init = "xls.constant_scalar"() { value = 0 : i32 } : () -> i32
-    xls.proc.yield %state (init: %init): i32
+    %init = xls.literal : tuple<i32> {
+      %2 = "xls.constant_scalar"() <{value = 10 : i32}> : () -> i32
+      %final = "xls.tuple"(%2) : (i32) -> tuple<i32>
+      xls.yield %final : tuple<i32>
+    }
+    xls.proc.yield %state : i32 (init = %init : tuple<i32>)
   }
 }
 

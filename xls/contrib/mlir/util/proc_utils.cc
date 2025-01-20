@@ -74,9 +74,11 @@ SprocOp createSprocSkeleton(ImplicitLocOpBuilder& builder, TypeRange inputs,
                             TypeRange results, TypeRange stateTypes, Twine name,
                             SymbolTable& symbolTable) {
   OpBuilder::InsertionGuard guard(builder);
-  auto sproc = builder.create<SprocOp>(builder.getStringAttr(name),
-                                       /*is_top=*/false,
-                                       /*boundary_channel_names=*/nullptr);
+  auto sproc =
+      builder.create<SprocOp>(builder.getStringAttr(name),
+                              /*is_top=*/false,
+                              /*zeroinitializer=*/true,
+                              /*boundary_channel_names=*/nullptr);
   symbolTable.insert(sproc);
   Block& spawns = sproc.getSpawns().emplaceBlock();
   Block& next = sproc.getNext().emplaceBlock();
@@ -362,8 +364,7 @@ void fixupSproc(SprocOp sproc) {
 // Tries to determine the trip count of the ForOp. Returns failure if the trip
 // count cannot be determined.
 FailureOr<int64_t> getTripCount(scf::ForOp forOp) {
-  if (auto step = forOp.getConstantStep();
-      !step.has_value() || !step->isOne()) {
+  if (auto step = forOp.getConstantStep(); !(step.has_value() && step->isOne())) {
     if (step.has_value()) {
       return mlir::failure();
     }

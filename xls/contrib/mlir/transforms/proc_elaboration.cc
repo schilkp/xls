@@ -110,6 +110,7 @@ class ElaborationContext
     }
 
     EprocOp eproc = builder.create<EprocOp>(sproc.getLoc(), sproc.getSymName(),
+                                            sproc.getZeroinitializer(),
                                             /*discardable=*/true,
                                             sproc.getMinPipelineStages());
     symbolTable.insert(eproc);
@@ -127,6 +128,8 @@ class ElaborationContext
     }
     replaceStructuredChannelOps(eproc.getBody(), chanMap);
     eproc.getBody().front().eraseArguments(0, sproc.getNextChannels().size());
+
+    eproc.getNextYieldOp().getODSOperandIndexAndLength(1);
 
     EprocAndChannels result = {eproc, std::move(eprocChannels)};
     procCache[sproc] = result;
