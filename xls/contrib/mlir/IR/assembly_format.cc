@@ -12,11 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 #include "xls/contrib/mlir/IR/assembly_format.h"
 
 #include <cassert>
 #include <string>
 
+#ifdef DYNAMATIC_INTEGRATION
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/Support/LogicalResult.h"
+#include "llvm/Support/SMLoc.h"
+#include "mlir/IR/Attributes.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/IR/TypeRange.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Support/LLVM.h"
+#else
 #include "llvm/include/llvm/ADT/STLExtras.h"
 #include "llvm/include/llvm/Support/LogicalResult.h"
 #include "llvm/include/llvm/Support/SMLoc.h"
@@ -29,6 +44,7 @@
 #include "mlir/include/mlir/IR/TypeRange.h"
 #include "mlir/include/mlir/IR/Types.h"
 #include "mlir/include/mlir/Support/LLVM.h"
+#endif /* DYNAMATIC */
 
 #define GET_TYPEDEF_CLASSES
 #include "xls/contrib/mlir/IR/xls_ops_typedefs.h.inc"

@@ -129,7 +129,7 @@ def Xls_TranslationLinkage : Xls_Attr<"TranslationLinkage"> {
     DefaultValuedParameter<"mlir::xls::LinkageKind", "LinkageKind::kImport">:$kind);
   let mnemonic = "translation_linkage";
   let assemblyFormat = "`<` $package `:` $function (`,` $kind^)? `>`";
-  let attrName = "xls.translation_linkage";
+  // let attrName = "xls.translation_linkage";
 }
 
 class GetShapeSplat<string name> :

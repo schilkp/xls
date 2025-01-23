@@ -21,6 +21,36 @@
 
 // Some of these need the keep IWYU pragma as they are required by *.inc files
 
+#ifdef DYNAMATIC_INTEGRATION
+#include "llvm/ADT/APInt.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/TypeSwitch.h"  // IWYU pragma: keep
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/LogicalResult.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Shape/IR/Shape.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinTypeInterfaces.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Diagnostics.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Region.h"
+#include "mlir/IR/SymbolTable.h"
+#include "mlir/Interfaces/CallInterfaces.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Support/LogicalResult.h"
+#include "mlir/Support/TypeID.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/InliningUtils.h"
+#include "assembly_format.h"  // IWYU pragma: keep
+#else
 #include "llvm/include/llvm/ADT/APInt.h"
 #include "llvm/include/llvm/ADT/STLExtras.h"
 #include "llvm/include/llvm/ADT/TypeSwitch.h"  // IWYU pragma: keep
@@ -49,6 +79,7 @@
 #include "mlir/include/mlir/Transforms/DialectConversion.h"
 #include "mlir/include/mlir/Transforms/InliningUtils.h"
 #include "xls/contrib/mlir/IR/assembly_format.h"  // IWYU pragma: keep
+#endif /* DYNAMATIC */
 
 // Generate enum printer/parsers.
 #include "xls/contrib/mlir/IR/xls_ops_enums.cc.inc"  // IWYU pragma: keep
@@ -102,9 +133,10 @@ ShapeOrBad getShapeSplat(Operation::operand_type_range range) {
     auto result = getShapeSplat(type);
     if (!shapeSplat.has_value()) {
       shapeSplat = result;
-    } else if (result != *shapeSplat) {
-      return ShapeOrBad::getBad();
     }
+    // } else if (result != *shapeSplat) {
+    //   return ShapeOrBad::getBad();
+    // }
   }
   return shapeSplat.value_or(ShapeOrBad::getBad());
 }
@@ -188,9 +220,10 @@ LogicalResult CountedForOp::verifySymbolUses(
                           << "' does not reference a valid function";
   }
 
-  if (funcOp.getFunctionType().getInputs().drop_front() != getOperandTypes()) {
-    return emitOpError("input argument mismatch between op and for body");
-  }
+  // if (funcOp.getFunctionType().getInputs().drop_front() != getOperandTypes()) {
+  //   return emitOpError("input argument mismatch between op and for body");
+  // }
+
   if (funcOp.getFunctionType().getResults().front() != getType()) {
     return emitOpError("result mismatch between op and for body");
   }
@@ -319,7 +352,7 @@ LogicalResult TupleIndexOp::canonicalize(TupleIndexOp op,
                                          PatternRewriter& rewriter) {
   // tuple_index(tuple($x1, $x2, ...), index=N) = $xN
   if (auto defining_op = op.getOperand().getDefiningOp<TupleOp>()) {
-    rewriter.replaceAllOpUsesWith(op, defining_op->getOperand(op.getIndex()));
+    rewriter.replaceAllUsesWith(op, defining_op->getOperand(op.getIndex()));
     return success();
   }
   return failure();
@@ -761,7 +794,7 @@ struct EprocOpSignatureConversion : public ConversionPattern {
 
     // Perform a no-op modification to inform the rewriter that we did actually
     // modify the op successfully (convertRegionTypes modifies the region).
-    rewriter.modifyOpInPlace(op, [&] {});
+    rewriter.updateRootInPlace(op, [&] {});
     return success();
   }
 

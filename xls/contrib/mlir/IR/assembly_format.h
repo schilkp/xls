@@ -15,6 +15,17 @@
 #ifndef GDM_HW_MLIR_XLS_IR_ASSEMBLY_FORMAT_H_
 #define GDM_HW_MLIR_XLS_IR_ASSEMBLY_FORMAT_H_
 
+#ifdef DYNAMATIC_INTEGRATION
+#include "llvm/ADT/ArrayRef.h"
+#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/OperationSupport.h"
+#include "mlir/IR/TypeRange.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Support/LLVM.h"
+#include "mlir/Support/LogicalResult.h"
+#else
 #include "llvm/include/llvm/ADT/ArrayRef.h"
 #include "mlir/include/mlir/IR/BuiltinAttributes.h"
 #include "mlir/include/mlir/IR/OpImplementation.h"
@@ -24,6 +35,7 @@
 #include "mlir/include/mlir/IR/Types.h"
 #include "mlir/include/mlir/Support/LLVM.h"
 #include "mlir/include/mlir/Support/LogicalResult.h"
+#endif /* DYNAMATIC */
 
 namespace mlir::xls {
 

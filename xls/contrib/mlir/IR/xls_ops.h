@@ -15,6 +15,20 @@
 #ifndef GDM_HW_MLIR_XLS_IR_XLS_OPS_H_
 #define GDM_HW_MLIR_XLS_IR_XLS_OPS_H_
 
+#ifdef DYNAMATIC_INTEGRATION
+#include "llvm/ADT/StringRef.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"  // IWYU pragma: keep
+#include "mlir/IR/Attributes.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/IR/DialectImplementation.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/TypeUtilities.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Transforms/DialectConversion.h"
+#else
 #include "llvm/include/llvm/ADT/StringRef.h"
 #include "mlir/include/mlir/Dialect/Func/IR/FuncOps.h"  // IWYU pragma: keep
 #include "mlir/include/mlir/IR/Attributes.h"
@@ -27,9 +41,15 @@
 #include "mlir/include/mlir/IR/TypeUtilities.h"
 #include "mlir/include/mlir/IR/Types.h"
 #include "mlir/include/mlir/Transforms/DialectConversion.h"
+#endif /* DYNAMATIC */
 
 // Include order below matters.
+#ifdef DYNAMATIC_INTEGRATION
+#include "mlir/IR/Value.h"
+#else
 #include "mlir/include/mlir/IR/Value.h"
+#endif /* DYNAMATIC */
+
 #include "xls/contrib/mlir/IR/xls_ops_enums.h.inc"  // IWYU pragma: export
 #define GET_ATTRDEF_CLASSES
 #include "xls/contrib/mlir/IR/xls_ops_attrs.h.inc"  // IWYU pragma: export
