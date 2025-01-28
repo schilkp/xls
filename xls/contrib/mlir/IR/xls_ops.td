@@ -140,6 +140,18 @@ class GetShapeSplat<string name> :
 class ShapesAreConsistent<list<string> names> :
     AllMatchSameOperatorTrait<names, GetShapeSplat<"_self">.result, "shape">;
 
+def Xls_FlopKindNone        : I32EnumAttrCase<"kNone", 0, "none">;
+def Xls_FlopKindFlop        : I32EnumAttrCase<"kFlop", 1, "flop">;
+def Xls_FlopKindSkid        : I32EnumAttrCase<"kSkid", 2, "skid">;
+def Xls_FlopKindZeroLatency : I32EnumAttrCase<"kZeroLatency", 3, "zero-latency">;
+
+def Xls_FlopKind : I32EnumAttr<"FlopKind", "XLS flop kind",
+  [Xls_FlopKindNone, Xls_FlopKindFlop, Xls_FlopKindSkid, Xls_FlopKindZeroLatency]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::mlir::xls";
+}
+def Xls_FlopKindAttr : EnumAttr<Xls_Dialect, Xls_FlopKind, "flop_kind">;
+
 class Xls_UnaryOp<string name, list<Trait> traits = []> :
   Xls_Op<name, !listconcat(traits, [
     ShapesAreConsistent<["operand", "result"]>,
@@ -1363,7 +1375,13 @@ def Xls_ChanOp : Xls_Op<"chan", [
     SymbolNameAttr:$sym_name,
     TypeAttr:$type,
     DefaultValuedAttr<BoolAttr, "true">:$send_supported,
-    DefaultValuedAttr<BoolAttr, "true">:$recv_supported
+    DefaultValuedAttr<BoolAttr, "true">:$recv_supported,
+    OptionalAttr<I64Attr>:$fifo_depth,
+    OptionalAttr<BoolAttr>:$bypass,
+    OptionalAttr<BoolAttr>:$register_push_outputs,
+    OptionalAttr<BoolAttr>:$register_pop_outputs,
+    OptionalAttr<Xls_FlopKindAttr>:$input_flop_kind,
+    OptionalAttr<Xls_FlopKindAttr>:$output_flop_kind
   );
   let assemblyFormat = [{
     $sym_name attr-dict `:` $type
@@ -1382,7 +1400,11 @@ def Xls_ChanOp : Xls_Op<"chan", [
       return {};
     }
   }];
-
+  let builders = [
+    OpBuilder<(ins "::mlir::StringRef":$name, "::mlir::Type":$element_type), [{
+      build($_builder, $_state, name,  element_type, true, true, mlir::IntegerAttr(), mlir::BoolAttr(), mlir::BoolAttr(), mlir::BoolAttr(), mlir::xls::FlopKindAttr(), mlir::xls::FlopKindAttr());
+    }]>
+  ];
 }
 
 def Xls_InstantiateEprocOp : Xls_Op<"instantiate_eproc", [DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
@@ -1483,7 +1505,13 @@ def Xls_SchanOp : Xls_Op<"schan", [Pure, HasParent<"SprocOp">]> {
   }];
   let arguments = (ins
     StrAttr:$name,
-    TypeAttr:$type
+    TypeAttr:$type,
+    OptionalAttr<I64Attr>:$fifo_depth,
+    OptionalAttr<BoolAttr>:$bypass,
+    OptionalAttr<BoolAttr>:$register_push_outputs,
+    OptionalAttr<BoolAttr>:$register_pop_outputs,
+    OptionalAttr<Xls_FlopKindAttr>:$input_flop_kind,
+    OptionalAttr<Xls_FlopKindAttr>:$output_flop_kind
   );
   let results = (outs
     Xls_SchanType:$out,
@@ -1494,7 +1522,7 @@ def Xls_SchanOp : Xls_Op<"schan", [Pure, HasParent<"SprocOp">]> {
     OpBuilder<(ins "::mlir::StringRef":$name, "::mlir::Type":$element_type), [{
       auto inChanTy = SchanType::get($_builder.getContext(), element_type, /*isInput=*/true);
       auto outChanTy = SchanType::get($_builder.getContext(), element_type, /*isInput=*/false);
-      build($_builder, $_state, ::mlir::TypeRange{outChanTy, inChanTy}, name, element_type);
+      build($_builder, $_state, ::mlir::TypeRange{outChanTy, inChanTy}, name, element_type, IntegerAttr(), BoolAttr(), BoolAttr(), BoolAttr(), FlopKindAttr(), FlopKindAttr());
     }]>
   ];
 }

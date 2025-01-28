@@ -188,8 +188,12 @@ class ElaborationInterpreter
   }
 
   absl::Status Interpret(SchanOp op, ElaborationContext& ctx) {
-    ChanOp chan = ctx.getBuilder().create<ChanOp>(op.getLoc(), op.getName(),
-                                                  op.getType());
+    ChanOp chan = ctx.getBuilder().create<ChanOp>(
+        op.getLoc(), op.getNameAttr(), op.getTypeAttr(),
+        ctx.getBuilder().getBoolAttr(true), ctx.getBuilder().getBoolAttr(true),
+        op.getFifoDepthAttr(), op.getBypassAttr(),
+        op.getRegisterPushOutputsAttr(), op.getRegisterPopOutputsAttr(),
+        op.getInputFlopKindAttr(), op.getOutputFlopKindAttr());
     ctx.getSymbolTable().insert(chan);
     ctx.Set(op.getResult(0), chan);
     ctx.Set(op.getResult(1), chan);

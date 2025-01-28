@@ -22,6 +22,7 @@
 // Some of these need the keep IWYU pragma as they are required by *.inc files
 
 #ifdef DYNAMATIC_INTEGRATION
+#include "assembly_format.h"  // IWYU pragma: keep
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/TypeSwitch.h"  // IWYU pragma: keep
@@ -49,7 +50,6 @@
 #include "mlir/Support/TypeID.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/InliningUtils.h"
-#include "assembly_format.h"  // IWYU pragma: keep
 #else
 #include "llvm/include/llvm/ADT/APInt.h"
 #include "llvm/include/llvm/ADT/STLExtras.h"
@@ -79,7 +79,7 @@
 #include "mlir/include/mlir/Transforms/DialectConversion.h"
 #include "mlir/include/mlir/Transforms/InliningUtils.h"
 #include "xls/contrib/mlir/IR/assembly_format.h"  // IWYU pragma: keep
-#endif /* DYNAMATIC */
+#endif                                            /* DYNAMATIC */
 
 // Generate enum printer/parsers.
 #include "xls/contrib/mlir/IR/xls_ops_enums.cc.inc"  // IWYU pragma: keep
@@ -220,7 +220,8 @@ LogicalResult CountedForOp::verifySymbolUses(
                           << "' does not reference a valid function";
   }
 
-  // if (funcOp.getFunctionType().getInputs().drop_front() != getOperandTypes()) {
+  // if (funcOp.getFunctionType().getInputs().drop_front() != getOperandTypes())
+  // {
   //   return emitOpError("input argument mismatch between op and for body");
   // }
 
@@ -532,6 +533,11 @@ ParseResult SchanOp::parse(OpAsmParser& parser, OperationState& result) {
   result.addAttribute("type", TypeAttr::get(type));
   result.types.push_back(SchanType::get(parser.getContext(), type, false));
   result.types.push_back(SchanType::get(parser.getContext(), type, true));
+
+  if (parser.parseOptionalAttrDictWithKeyword(result.attributes)) {
+    return failure();
+  }
+
   return success();
 }
 
@@ -541,7 +547,8 @@ void SchanOp::print(OpAsmPrinter& printer) {
   printer << '>';
   printer << '(';
   printer.printString(getName());
-  printer << ')';
+  printer << ") ";
+  printer.printOptionalAttrDictWithKeyword(getOperation()->getAttrs(), {"type", "name"});
 }
 
 void SprocOp::print(OpAsmPrinter& printer) {
@@ -794,7 +801,8 @@ struct EprocOpSignatureConversion : public ConversionPattern {
 
     // Perform a no-op modification to inform the rewriter that we did actually
     // modify the op successfully (convertRegionTypes modifies the region).
-    rewriter.updateRootInPlace(op, [&] {});
+    // rewriter.updateRootInPlace(op, [&] {});
+    rewriter.replaceOp(op, op);
     return success();
   }
 

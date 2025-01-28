@@ -147,10 +147,12 @@ class LegalizeChanOpPattern : public OpConversionPattern<ChanOp> {
       ChanOp op, OpAdaptor adaptor,
       ConversionPatternRewriter& rewriter) const override {
     (void)adaptor;
-    auto newOp = rewriter.replaceOpWithNewOp<ChanOp>(
-        op, op.getSymName(), typeConverter->convertType(op.getType()));
-    newOp.setSendSupported(op.getSendSupported());
-    newOp.setRecvSupported(op.getRecvSupported());
+    rewriter.replaceOpWithNewOp<ChanOp>(
+        op, op.getSymName(), typeConverter->convertType(op.getType()),
+        op.getSendSupported(), op.getRecvSupported(), op.getFifoDepthAttr(),
+        op.getBypassAttr(), op.getRegisterPushOutputsAttr(),
+        op.getRegisterPopOutputsAttr(), op.getInputFlopKindAttr(),
+        op.getOutputFlopKindAttr());
     return success();
   }
 };

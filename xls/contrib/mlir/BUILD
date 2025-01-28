@@ -542,6 +542,7 @@ cc_library(
         "//xls/common/file:get_runfile_path",
         "//xls/ir",
         "//xls/ir:bits",
+        "//xls/ir:channel",
         "//xls/ir:foreign_function",
         "//xls/ir:foreign_function_data_cc_proto",
         "//xls/ir:source_location",

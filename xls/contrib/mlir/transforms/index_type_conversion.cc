@@ -46,7 +46,7 @@ namespace {
 
 class IndexTypeConverter : public TypeConverter {
  public:
-  explicit IndexTypeConverter(MLIRContext &ctx, unsigned indexTypeBitWidth)
+  explicit IndexTypeConverter(MLIRContext& ctx, unsigned indexTypeBitWidth)
       : ctx(ctx), indexTypeBitWidth(indexTypeBitWidth) {
     convertedIndexType = IntegerType::get(&ctx, getIndexTypeBitwidth());
     addConversion(
@@ -85,7 +85,7 @@ class IndexTypeConverter : public TypeConverter {
 
   using TypeConverter::isLegal;
 
-  bool isLegal(mlir::Operation *op) const {
+  bool isLegal(mlir::Operation* op) const {
     // An non-function XlsRegionOp is legal always (reminder: meaning that it
     // has legal operand and result types) as we will not do any conversion on
     // these. Functions or any other op needs to have their types converted.
@@ -97,7 +97,7 @@ class IndexTypeConverter : public TypeConverter {
     return TypeConverter::isLegal(op);
   }
 
-  MLIRContext &getContext() const { return ctx; }
+  MLIRContext& getContext() const { return ctx; }
 
   Type getConvertedIndexType() const { return convertedIndexType; }
 
@@ -105,7 +105,7 @@ class IndexTypeConverter : public TypeConverter {
   unsigned getIndexTypeBitwidth() const { return indexTypeBitWidth; };
 
  private:
-  MLIRContext &ctx;
+  MLIRContext& ctx;
   IntegerType convertedIndexType;
   unsigned indexTypeBitWidth;
 };
@@ -117,7 +117,7 @@ class LegalizeConstantIndex
 
   LogicalResult matchAndRewrite(
       mlir::arith::ConstantOp op, OpAdaptor /*adaptor*/,
-      ConversionPatternRewriter &rewriter) const override {
+      ConversionPatternRewriter& rewriter) const override {
     auto intAttr = dyn_cast<IntegerAttr>(op.getValue());
     if (!intAttr) {
       return rewriter.notifyMatchFailure(
@@ -136,7 +136,7 @@ class LegalizeIndexCastOp : public OpConversionPattern<IndexCastOpTy> {
 
   LogicalResult matchAndRewrite(
       IndexCastOpTy op, OpConversionPattern<IndexCastOpTy>::OpAdaptor adaptor,
-      ConversionPatternRewriter &rewriter) const override {
+      ConversionPatternRewriter& rewriter) const override {
     Type outType = op.getOut().getType();
     if (!isa<IndexType, IntegerType>(outType)) {
       return rewriter.notifyMatchFailure(op, "only scalar type is supported");
@@ -145,8 +145,8 @@ class LegalizeIndexCastOp : public OpConversionPattern<IndexCastOpTy> {
     bool isCastToIndex = outType.isIndex();
     unsigned srcBitWidth;
     unsigned resBitWidth;
-    const IndexTypeConverter *typeConverter =
-        static_cast<const IndexTypeConverter *>(this->getTypeConverter());
+    const IndexTypeConverter* typeConverter =
+        static_cast<const IndexTypeConverter*>(this->getTypeConverter());
     if (isCastToIndex) {
       srcBitWidth = op.getIn().getType().getIntOrFloatBitWidth();
       resBitWidth = typeConverter->getIndexTypeBitwidth();
@@ -179,13 +179,13 @@ using LegalizeIndexCastUI =
 
 class LegalizeGeneralOps : public ConversionPattern {
  public:
-  LegalizeGeneralOps(TypeConverter &converter, MLIRContext *context)
+  LegalizeGeneralOps(TypeConverter& converter, MLIRContext* context)
       : ConversionPattern(converter, RewritePattern::MatchAnyOpTypeTag(),
                           /*benefit=*/1, context) {}
   LogicalResult matchAndRewrite(
-      Operation *op, llvm::ArrayRef<Value> operands,
-      ConversionPatternRewriter &rewriter) const override {
-    Dialect *opDialect = op->getDialect();
+      Operation* op, llvm::ArrayRef<Value> operands,
+      ConversionPatternRewriter& rewriter) const override {
+    Dialect* opDialect = op->getDialect();
     if (!opDialect ||
         opDialect->getTypeID() != TypeID::get<xls::XlsDialect>()) {
       return rewriter.notifyMatchFailure(
@@ -206,8 +206,8 @@ class LegalizeGeneralOps : public ConversionPattern {
                               operands, newResultTypes, op->getAttrs(),
                               op->getSuccessors());
 
-    for (Region &region : op->getRegions()) {
-      Region *newRegion = newOpState.addRegion();
+    for (Region& region : op->getRegions()) {
+      Region* newRegion = newOpState.addRegion();
       rewriter.inlineRegionBefore(region, *newRegion, newRegion->begin());
 
       TypeConverter::SignatureConversion signatureConv(
@@ -219,7 +219,7 @@ class LegalizeGeneralOps : public ConversionPattern {
       rewriter.applySignatureConversion(&newRegion->front(), signatureConv);
     }
 
-    Operation *newOp = rewriter.create(newOpState);
+    Operation* newOp = rewriter.create(newOpState);
     rewriter.replaceOp(op, newOp->getResults());
     return success();
   }
@@ -229,13 +229,16 @@ class LegalizeChanOp : public OpConversionPattern<ChanOp> {
  public:
   using OpConversionPattern::OpConversionPattern;
 
+
   LogicalResult matchAndRewrite(
       ChanOp op, OpAdaptor /*adaptor*/,
-      ConversionPatternRewriter &rewriter) const override {
+      ConversionPatternRewriter& rewriter) const override {
     Type resultType = getTypeConverter()->convertType(op.getType());
-    rewriter.replaceOpWithNewOp<xls::ChanOp>(op, op.getSymName(), resultType,
-                                             op.getSendSupported(),
-                                             op.getRecvSupported());
+    rewriter.replaceOpWithNewOp<ChanOp>(
+        op, op.getSymName(), resultType, op.getSendSupported(),
+        op.getRecvSupported(), op.getFifoDepthAttr(), op.getBypassAttr(),
+        op.getRegisterPushOutputsAttr(), op.getRegisterPopOutputsAttr(),
+        op.getInputFlopKindAttr(), op.getOutputFlopKindAttr());
     return success();
   }
 };
@@ -246,12 +249,12 @@ class IndexTypeConversionPass
   using IndexTypeConversionPassBase::IndexTypeConversionPassBase;
 
   void runOnOperation() override {
-    MLIRContext &ctx = getContext();
+    MLIRContext& ctx = getContext();
     IndexTypeConverter typeConverter(ctx, indexTypeBitWidth);
     ConversionTarget target(ctx);
-    target.markUnknownOpDynamicallyLegal([typeConverter](Operation *op) {
+    target.markUnknownOpDynamicallyLegal([typeConverter](Operation* op) {
       return typeConverter.isLegal(op) &&
-             llvm::all_of(op->getRegions(), [&](Region &region) {
+             llvm::all_of(op->getRegions(), [&](Region& region) {
                return typeConverter.isLegal(&region);
              });
     });
