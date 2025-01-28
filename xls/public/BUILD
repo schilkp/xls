@@ -15,7 +15,7 @@
 # Public (exported) XLS APIs.
 
 # pytype binary only
-load("//xls/public:xls_public_macros.oss.bzl", "libxls_dylib_binary", "pytype_test_test_c_api_symbols")
+load("//xls/public:xls_public_macros.oss.bzl", "pytype_test_test_c_api_symbols")
 
 package(
     default_applicable_licenses = ["//:license"],
@@ -306,7 +306,5 @@ cc_binary(
         ":c_api",  # build_cleaner: keep
     ],
 )
-
-libxls_dylib_binary()
 
 pytype_test_test_c_api_symbols()

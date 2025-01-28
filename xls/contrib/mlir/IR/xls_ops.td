@@ -1309,6 +1309,9 @@ def Xls_AfterAllOp : Xls_Op<"after_all", [
     OpBuilder<(ins), [{
       build($_builder, $_state, TokenType::get($_builder.getContext()), ::ValueRange{});
     }]>
+    OpBuilder<(ins "::mlir::ValueRange":$values), [{
+      build($_builder, $_state, TokenType::get($_builder.getContext()), values);
+    }]>
   ];
   let extraClassDeclaration = [{
     bool isPermissibleInsideLiteral() {
