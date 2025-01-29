@@ -33,6 +33,7 @@
 #include "absl/strings/str_join.h"
 #include "absl/strings/substitute.h"
 #include "absl/types/span.h"
+#include "re2/re2.h"
 #include "xls/common/status/status_macros.h"
 #include "xls/data_structures/leaf_type_tree.h"
 #include "xls/ir/block.h"
@@ -41,7 +42,6 @@
 #include "xls/ir/nodes.h"
 #include "xls/ir/package.h"
 #include "xls/ir/type.h"
-#include "re2/re2.h"
 
 namespace xls {
 
@@ -282,18 +282,24 @@ absl::StatusOr<InstantiationPort> FifoInstantiation::GetInputPort(
 
 absl::StatusOr<InstantiationType> FifoInstantiation::type() const {
   Type* u1 = package_->GetBitsType(1);
-  return InstantiationType(/*input_types=*/
-                           {
-                               {std::string{kResetPortName}, u1},
-                               {std::string(kPushValidPortName), u1},
-                               {std::string(kPopReadyPortName), u1},
-                               {std::string(kPushDataPortName), data_type()},
-                           },
-                           /*output_types=*/{
-                               {std::string(kPopValidPortName), u1},
-                               {std::string(kPushReadyPortName), u1},
-                               {std::string(kPopDataPortName), data_type()},
-                           });
+
+  absl::flat_hash_map<std::string, Type*> input_types = {
+      {std::string{kResetPortName}, u1},
+      {std::string(kPushValidPortName), u1},
+      {std::string(kPopReadyPortName), u1},
+  };
+
+  absl::flat_hash_map<std::string, Type*> output_types = {
+      {std::string(kPopValidPortName), u1},
+      {std::string(kPushReadyPortName), u1},
+  };
+
+  if (data_type()->GetFlatBitCount() > 0) {
+    input_types[std::string(kPushDataPortName)] = data_type();
+    output_types[std::string(kPopDataPortName)] = data_type();
+  }
+
+  return InstantiationType(input_types, output_types);
 }
 
 absl::StatusOr<InstantiationPort> FifoInstantiation::GetOutputPort(
