@@ -1296,6 +1296,14 @@ std::string QuotedString::Emit(LineInfo* line_info) const {
   return absl::StrFormat("\"%s\"", str_);
 }
 
+// TODO(meheff): Escape string.
+std::string UnQuotedString::Emit(LineInfo* line_info) const {
+  LineInfoStart(line_info, this);
+  LineInfoIncrease(line_info, NumberOfNewlines(str_));
+  LineInfoEnd(line_info, this);
+  return absl::StrFormat("%s", str_);
+}
+
 static bool IsScalarLogicRef(IndexableExpression* expr) {
   auto* logic_ref = dynamic_cast<LogicRef*>(expr);
   return logic_ref != nullptr && logic_ref->def()->data_type()->IsScalar();

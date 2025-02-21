@@ -578,6 +578,19 @@ std::string ModuleTestbench::GenerateVerilog() const {
     m->Add<BlankLine>(SourceInfo());
     m->Add<Comment>(SourceInfo(), "Monitor for input/output ports.");
     Initial* initial = m->Add<Initial>(SourceInfo());
+
+    initial->statements()->Add<DumpFile>(
+        SourceInfo(), std::vector<Expression*>{file.Make<QuotedString>(
+                          SourceInfo(), std::string("testbench.vcd"))});
+
+    std::vector<Expression*> dumpvar_args = {};
+    dumpvar_args.push_back(
+        file.Make<UnQuotedString>(SourceInfo(), std::string("0")));
+    dumpvar_args.push_back(
+        file.Make<UnQuotedString>(SourceInfo(), std::string("testbench")));
+
+    initial->statements()->Add<DumpVars>(SourceInfo(), dumpvar_args);
+
     initial->statements()->Add<Display>(
         SourceInfo(),
         std::vector<Expression*>{file.Make<QuotedString>(
