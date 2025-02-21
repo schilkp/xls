@@ -1749,6 +1749,18 @@ class QuotedString final : public Expression {
   std::string str_;
 };
 
+// Represents a quoted literal string.
+class UnQuotedString final : public Expression {
+ public:
+  UnQuotedString(std::string_view str, VerilogFile* file, const SourceInfo& loc)
+      : Expression(file, loc), str_(str) {}
+
+  std::string Emit(LineInfo* line_info) const final;
+
+ private:
+  std::string str_;
+};
+
 class XLiteral final : public Expression {
  public:
   using Expression::Expression;
@@ -2030,6 +2042,22 @@ class SystemFunctionCall : public Expression {
  private:
   std::string name_;
   std::optional<std::vector<Expression*>> args_;
+};
+
+// Represents a $dumpfile function call.
+class DumpFile final : public SystemTaskCall {
+ public:
+  DumpFile(absl::Span<Expression* const> args, VerilogFile* file,
+          const SourceInfo& loc)
+      : SystemTaskCall("dumpfile", args, file, loc) {}
+};
+
+// Represents a $dumpvars function call.
+class DumpVars final : public SystemTaskCall {
+ public:
+  DumpVars(absl::Span<Expression* const> args, VerilogFile* file,
+          const SourceInfo& loc)
+      : SystemTaskCall("dumpvars", args, file, loc) {}
 };
 
 // Represents a $display function call.
