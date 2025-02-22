@@ -1002,5 +1002,99 @@ block my_block(in0: bits[32], in1: bits[32], out0: bits[32], out1: bits[32]) {
 )");
 }
 
+TEST_F(BlockTest, ReplaceInstantiationWithRename) {
+  auto p = CreatePackage();
+  Type* u32 = p->GetBitsType(32);
+
+  BlockBuilder sub_bb("sub_block", p.get());
+  {
+    BValue a = sub_bb.InputPort("a", u32);
+    BValue b = sub_bb.InputPort("b", u32);
+    sub_bb.OutputPort("x", a);
+    sub_bb.OutputPort("y", b);
+  }
+  XLS_ASSERT_OK_AND_ASSIGN(Block * sub_block, sub_bb.Build());
+  BlockBuilder add_bb("add_block", p.get());
+  {
+    BValue a_renamed = add_bb.InputPort("a_renamed", u32);
+    BValue b = add_bb.InputPort("b", u32);
+    add_bb.OutputPort("x_renamed", add_bb.Add(a_renamed, b));
+    add_bb.OutputPort("y", b);
+  }
+  XLS_ASSERT_OK_AND_ASSIGN(Block * add_block, add_bb.Build());
+
+  BlockBuilder bb("my_block", p.get());
+  XLS_ASSERT_OK_AND_ASSIGN(
+      Instantiation * instantiation,
+      bb.block()->AddBlockInstantiation("inst", sub_block));
+  {
+    BValue in0 = bb.InputPort("in0", u32);
+    BValue in1 = bb.InputPort("in1", u32);
+    bb.InstantiationInput(instantiation, "a", in0);
+    BValue out0 = bb.InstantiationOutput(instantiation, "x");
+    bb.InstantiationInput(instantiation, "b", in1);
+    BValue out1 = bb.InstantiationOutput(instantiation, "y");
+    bb.OutputPort("out0", out0);
+    bb.OutputPort("out1", out1);
+  }
+  XLS_ASSERT_OK_AND_ASSIGN(Block * block, bb.Build());
+
+  XLS_ASSERT_OK_AND_ASSIGN(auto inst_add,
+                           block->AddBlockInstantiation("inst_add", add_block));
+
+  // Replacing without rename should fail since port names do not match:
+  EXPECT_THAT(block->ReplaceInstantiationWith(instantiation, inst_add),
+              absl_testing::StatusIs(absl::StatusCode::kInternal,
+                                     testing::ContainsRegex("Type mismatch")));
+
+  // Replacing with rename of non-existent port should fail:
+  EXPECT_THAT(block->ReplaceInstantiationWith(instantiation, inst_add,
+                                              {{"does_not_exist", "a2"}}),
+              absl_testing::StatusIs(
+                  absl::StatusCode::kInternal,
+                  testing::ContainsRegex("rename port that does not exist")));
+
+  // Replacing with rename of port to used name should fail:
+  EXPECT_THAT(
+      block->ReplaceInstantiationWith(instantiation, inst_add, {{"a", "b"}}),
+      absl_testing::StatusIs(absl::StatusCode::kInternal,
+                             testing::ContainsRegex("name already exists")));
+
+  // Replacing with acceptable rename:
+  EXPECT_THAT(
+      block->ReplaceInstantiationWith(instantiation, inst_add,
+                                      {{"a", "a_renamed"}, {"x", "x_renamed"}}),
+      absl_testing::IsOk());
+  EXPECT_EQ(p->DumpIr(), R"(package ReplaceInstantiationWithRename
+
+block sub_block(a: bits[32], b: bits[32], x: bits[32], y: bits[32]) {
+  a: bits[32] = input_port(name=a, id=1)
+  b: bits[32] = input_port(name=b, id=2)
+  x: () = output_port(a, name=x, id=3)
+  y: () = output_port(b, name=y, id=4)
+}
+
+block add_block(a_renamed: bits[32], b: bits[32], x_renamed: bits[32], y: bits[32]) {
+  a_renamed: bits[32] = input_port(name=a_renamed, id=5)
+  b: bits[32] = input_port(name=b, id=6)
+  add.7: bits[32] = add(a_renamed, b, id=7)
+  x_renamed: () = output_port(add.7, name=x_renamed, id=8)
+  y: () = output_port(b, name=y, id=9)
+}
+
+block my_block(in0: bits[32], in1: bits[32], out0: bits[32], out1: bits[32]) {
+  instantiation inst_add(block=add_block, kind=block)
+  in0: bits[32] = input_port(name=in0, id=10)
+  in1: bits[32] = input_port(name=in1, id=11)
+  instantiation_input.18: () = instantiation_input(in0, instantiation=inst_add, port_name=a_renamed, id=18)
+  instantiation_input.19: () = instantiation_input(in1, instantiation=inst_add, port_name=b, id=19)
+  instantiation_output.20: bits[32] = instantiation_output(instantiation=inst_add, port_name=x_renamed, id=20)
+  instantiation_output.21: bits[32] = instantiation_output(instantiation=inst_add, port_name=y, id=21)
+  out0: () = output_port(instantiation_output.20, name=out0, id=16)
+  out1: () = output_port(instantiation_output.21, name=out1, id=17)
+}
+)");
+}
+
 }  // namespace
 }  // namespace xls
