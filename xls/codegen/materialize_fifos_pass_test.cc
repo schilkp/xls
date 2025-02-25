@@ -60,17 +60,14 @@ class MaterializeFifosPassTestHelper {
       kInterpreterBlockEvaluator;
   static constexpr const BlockEvaluator& kTestEvaluator =
       kInterpreterBlockEvaluator;
-  absl::StatusOr<Block*> MakeOracleBlock(Package* p, FifoConfig config) {
-    return MakeOracleBlock(p, config, p->GetBitsType(32));
-  }
-  absl::StatusOr<Block*> MakeOracleBlock(Package* p, FifoConfig config,
-                                         Type* ty,
+  absl::StatusOr<Block*> MakeOracleBlock(Package* p, FifoTestParam params,
                                          std::string_view name = "oracle") {
     BlockBuilder bb(uniq_.GetSanitizedUniqueName(
                         absl::StrFormat("%s_%s", name, TestName())),
                     p);
-    XLS_ASSIGN_OR_RETURN(auto inst,
-                         bb.block()->AddFifoInstantiation("fifo", config, ty));
+    XLS_ASSIGN_OR_RETURN(auto inst, bb.block()->AddFifoInstantiation(
+                                        "fifo", params.config,
+                                        p->GetBitsType(params.data_bit_count)));
     XLS_ASSIGN_OR_RETURN(InstantiationType inst_ty, inst->type());
     for (const auto& [port_name, in_ty] : inst_ty.input_types()) {
       bb.InstantiationInput(inst, port_name, bb.InputPort(port_name, in_ty));
@@ -80,13 +77,8 @@ class MaterializeFifosPassTestHelper {
     }
     return bb.Build();
   }
-  absl::StatusOr<Block*> MakeFifoBlock(Package* p, FifoConfig config) {
-    return MakeFifoBlock(p, config, p->GetBitsType(32));
-  }
-  absl::StatusOr<Block*> MakeFifoBlock(Package* p, FifoConfig config,
-                                       Type* ty) {
-    XLS_ASSIGN_OR_RETURN(Block * wrapper,
-                         MakeOracleBlock(p, config, ty, "test"));
+  absl::StatusOr<Block*> MakeFifoBlock(Package* p, FifoTestParam params) {
+    XLS_ASSIGN_OR_RETURN(Block * wrapper, MakeOracleBlock(p, params, "test"));
 
     MaterializeFifosPass mfp;
     CodegenPassUnit pu(p, wrapper);
@@ -116,7 +108,7 @@ class MaterializeFifosPassTestHelper {
   }
 
   // Compare against the interpreter as an oracle.
-  void RunTestVector(FifoConfig config,
+  void RunTestVector(FifoTestParam config,
                      absl::Span<Operation const> operations) {
     auto p = CreatePackage();
     XLS_ASSERT_OK_AND_ASSIGN(Block * fifo_block,
@@ -129,22 +121,26 @@ class MaterializeFifosPassTestHelper {
                              MakeOracle(oracle_package.get(), config));
     testing::Test::RecordProperty("oracle", oracle_package->DumpIr());
     int64_t i = 0;
-    for (const BaseOperation& op : operations) {
+    for (const BaseOperation& orig_op : operations) {
+      // Ensure applied operation has the expected type:
+      std::unique_ptr<BaseOperation> op =
+          orig_op.WithBitWidth(config.data_bit_count);
+
       ScopedMaybeRecord op_cnt("op_cnt", i);
       ScopedMaybeRecord init_state("initial_state", tester->registers());
-      auto test_res = tester->RunOneCycle(op.InputSet());
-      auto oracle_res = oracle->RunOneCycle(op.InputSet());
+      auto test_res = tester->RunOneCycle(op->InputSet());
+      auto oracle_res = oracle->RunOneCycle(op->InputSet());
       ASSERT_THAT(std::make_pair(test_res, oracle_res),
                   testing::Pair(absl_testing::IsOk(), absl_testing::IsOk()))
           << "@i=" << i;
       auto tester_outputs = tester->output_ports();
       ScopedMaybeRecord state("out_state", tester->registers());
-      ScopedMaybeRecord input("input", op.InputSet());
+      ScopedMaybeRecord input("input", op->InputSet());
       ScopedMaybeRecord test_out("test_output", tester_outputs);
       ScopedMaybeRecord oracle_out("oracle_output", oracle->output_ports());
       ScopedMaybeRecord trace("trace", tester->events().trace_msgs);
       ASSERT_THAT(tester_outputs,
-                  UsableOutputsMatch(op.InputSet(), oracle->output_ports()))
+                  UsableOutputsMatch(op->InputSet(), oracle->output_ports()))
           << "@" << i << ". tester_state: {"
           << absl::StrJoin(tester->registers(), ", ", absl::PairFormatter("="))
           << "}";
@@ -154,26 +150,11 @@ class MaterializeFifosPassTestHelper {
 
   NameUniquer uniq_ = NameUniquer("___");
 };
-struct PartialConfig {
-  bool bypass;
-  bool reg_push_outputs;
-  bool reg_pop_outputs;
 
-  FifoConfig WithDepth(int64_t depth) const {
-    return FifoConfig(depth, bypass, reg_push_outputs, reg_pop_outputs);
-  }
-};
-
-template <typename Sink>
-void AbslStringify(Sink& sink, const PartialConfig& value) {
-  absl::Format(&sink, "k%sBypass%sRegPushOutputs%sRegPopOutputs",
-               value.bypass ? "" : "No", value.reg_push_outputs ? "" : "No",
-               value.reg_pop_outputs ? "" : "No");
-}
 class MaterializeFifosPassTest
     : public MaterializeFifosPassTestHelper,
       public IrTestBase,
-      public testing::WithParamInterface<PartialConfig> {
+      public testing::WithParamInterface<FifoTestParam> {
  public:
   std::string TestName() const override { return IrTestBase::TestName(); }
   std::unique_ptr<Package> CreatePackage() const override {
@@ -182,74 +163,74 @@ class MaterializeFifosPassTest
 };
 
 TEST_P(MaterializeFifosPassTest, BasicFifo) {
-  RunTestVector(GetParam().WithDepth(3), {
-                                             Push{1},
-                                             Push{2},
-                                             Push{3},
-                                             NotReady{},
-                                             NotReady{},
-                                             NotReady{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             // Out of elements.
-                                             Pop{},
-                                             Pop{},
-                                             PushAndPop{4},
-                                             PushAndPop{5},
-                                             PushAndPop{6},
-                                             PushAndPop{7},
-                                             Pop{},
-                                             // Out of elements
-                                             Pop{},
-                                             Pop{},
-                                             Push{8},
-                                             Push{9},
-                                             Push{10},
-                                             // Full
-                                             Push{11},
-                                             Push{12},
-                                             Push{13},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             // Out of elements.
-                                             Pop{},
-                                             Pop{},
-                                         });
+  RunTestVector(GetParam(), {
+                                Push{1},
+                                Push{2},
+                                Push{3},
+                                NotReady{},
+                                NotReady{},
+                                NotReady{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                // Out of elements.
+                                Pop{},
+                                Pop{},
+                                PushAndPop{4},
+                                PushAndPop{5},
+                                PushAndPop{6},
+                                PushAndPop{7},
+                                Pop{},
+                                // Out of elements
+                                Pop{},
+                                Pop{},
+                                Push{8},
+                                Push{9},
+                                Push{10},
+                                // Full
+                                Push{11},
+                                Push{12},
+                                Push{13},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                // Out of elements.
+                                Pop{},
+                                Pop{},
+                            });
 }
 
 TEST_P(MaterializeFifosPassTest, BasicFifoFull) {
-  RunTestVector(GetParam().WithDepth(3), {
-                                             Push{1},
-                                             Push{2},
-                                             Push{3},
-                                             Push{4},
-                                             Push{5},
-                                             Push{6},
-                                             Push{7},
-                                             PushAndPop{8},
-                                             PushAndPop{9},
-                                             PushAndPop{10},
-                                             PushAndPop{11},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                         });
+  RunTestVector(GetParam(), {
+                                Push{1},
+                                Push{2},
+                                Push{3},
+                                Push{4},
+                                Push{5},
+                                Push{6},
+                                Push{7},
+                                PushAndPop{8},
+                                PushAndPop{9},
+                                PushAndPop{10},
+                                PushAndPop{11},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                            });
 }
 
 TEST_P(MaterializeFifosPassTest, FifoLengthIsSmall) {
   // If length is near the overflow point for the bit-width mistakes in mod
   // calculation are possible.
-  RunTestVector(GetParam().WithDepth(2),
+  RunTestVector(GetParam(),
                 {PushAndPop{1}, PushAndPop{2}, PushAndPop{3}, PushAndPop{4}});
 }
 
 TEST_F(MaterializeFifosPassTest, ResetFullFifo) {
-  FifoConfig cfg(3, false, false, false);
+  FifoTestParam cfg{32, {3, false, false, false}};
   RunTestVector(cfg, {
                          Push{1},
                          Push{2},
@@ -273,67 +254,55 @@ TEST_F(MaterializeFifosPassTest, ResetFullFifo) {
 }
 
 TEST_P(MaterializeFifosPassTest, BasicFifoBypass) {
-  RunTestVector(GetParam().WithDepth(3), {
-                                             PushAndPop{1},
-                                             PushAndPop{2},
-                                             PushAndPop{3},
-                                             PushAndPop{4},
-                                             PushAndPop{5},
-                                             PushAndPop{6},
-                                             PushAndPop{7},
-                                             PushAndPop{8},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                             Pop{},
-                                         });
+  RunTestVector(GetParam(), {
+                                PushAndPop{1},
+                                PushAndPop{2},
+                                PushAndPop{3},
+                                PushAndPop{4},
+                                PushAndPop{5},
+                                PushAndPop{6},
+                                PushAndPop{7},
+                                PushAndPop{8},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                                Pop{},
+                            });
+}
+
+inline std::vector<FifoTestParam> GenerateMaterializeFifoTestParams() {
+  std::vector<FifoTestParam> params;
+  for (int64_t data_bit_count : {0, 32}) {
+    for (int64_t depth : {0, 3, 5}) {
+      for (bool bypass : {true, false}) {
+        for (bool register_push_outputs : {true, false}) {
+          for (bool register_pop_outputs : {true, false}) {
+            if (depth == 0 &&
+                (!bypass || register_push_outputs || register_pop_outputs)) {
+              // Unsupported configurations of depth=0 fifos.
+              continue;
+            }
+            if (depth == 1 && register_pop_outputs) {
+              // Unsupported configuration of depth=1 fifo with
+              // register_pop_outputs.
+              continue;
+            }
+            params.push_back(FifoTestParam{
+                .data_bit_count = data_bit_count,
+                .config = FifoConfig(depth, bypass, register_push_outputs,
+                                     register_pop_outputs)});
+          }
+        }
+      }
+    }
+  }
+  return params;
 }
 
 INSTANTIATE_TEST_SUITE_P(MaterializeFifosPassTest, MaterializeFifosPassTest,
-                         testing::ValuesIn<PartialConfig>({
-                             PartialConfig{
-                                 .bypass = false,
-                                 .reg_push_outputs = false,
-                                 .reg_pop_outputs = false,
-                             },
-                             PartialConfig{
-                                 .bypass = false,
-                                 .reg_push_outputs = true,
-                                 .reg_pop_outputs = false,
-                             },
-                             PartialConfig{
-                                 .bypass = false,
-                                 .reg_push_outputs = false,
-                                 .reg_pop_outputs = true,
-                             },
-                             PartialConfig{
-                                 .bypass = false,
-                                 .reg_push_outputs = true,
-                                 .reg_pop_outputs = true,
-                             },
-                             PartialConfig{
-                                 .bypass = true,
-                                 .reg_push_outputs = false,
-                                 .reg_pop_outputs = false,
-                             },
-                             PartialConfig{
-                                 .bypass = true,
-                                 .reg_push_outputs = true,
-                                 .reg_pop_outputs = false,
-                             },
-                             PartialConfig{
-                                 .bypass = true,
-                                 .reg_push_outputs = false,
-                                 .reg_pop_outputs = true,
-                             },
-                             PartialConfig{
-                                 .bypass = true,
-                                 .reg_push_outputs = true,
-                                 .reg_pop_outputs = true,
-                             },
-                         }),
+                         testing::ValuesIn(GenerateMaterializeFifoTestParams()),
                          testing::PrintToStringParamName());
 
 class MaterializeFifosPassFuzzTest : public MaterializeFifosPassTestHelper {
@@ -343,22 +312,22 @@ class MaterializeFifosPassFuzzTest : public MaterializeFifosPassTestHelper {
   }
   std::string TestName() const override { return "FuzzTest"; }
 };
-void FuzzTestFifo(FifoConfig cfg, const std::vector<Operation>& ops) {
+void FuzzTestFifo(FifoTestParam cfg, const std::vector<Operation>& ops) {
   MaterializeFifosPassFuzzTest fixture;
   fixture.RunTestVector(cfg, ops);
 }
 
 FUZZ_TEST(MaterializeFifosPassFuzzTest, FuzzTestFifo)
-    .WithDomains(FifoConfigDomain(),
+    .WithDomains(FifoTestParamDomain(),
                  fuzztest::VectorOf(OperationDomain()).WithMaxSize(1000));
 
 TEST(FifoFuzzTest, FuzzTestJitRegression) {
-  FuzzTestFifo(xls::FifoConfig(1, false, false, false),
+  FuzzTestFifo(FifoTestParam{32, xls::FifoConfig(1, false, false, false)},
                {Operation(NotReady()), Operation(Pop())});
 }
 
 TEST(FifoFuzzTest, FuzzTestJitRegression2) {
-  FuzzTestFifo(xls::FifoConfig(10, true, false, false),
+  FuzzTestFifo(FifoTestParam{32, xls::FifoConfig(10, true, false, false)},
                {Operation(ResetOp()), Operation(ResetOp())});
 }
 
