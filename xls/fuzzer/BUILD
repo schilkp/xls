@@ -750,6 +750,20 @@ cc_library(
     ],
 )
 
+cc_binary(
+    name = "ast_generator_main",
+    srcs = ["ast_generator_main.cc"],
+    deps = [
+        ":ast_generator",
+        "//xls/common:exit_status",
+        "//xls/common:init_xls",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/random",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 cc_test(
     name = "ast_generator_test",
     srcs = ["ast_generator_test.cc"],
