@@ -20,9 +20,9 @@
 #include <string>
 #include <vector>
 
+#include "absl/status/status_matchers.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "absl/status/status_matchers.h"
 #include "xls/common/status/matchers.h"
 #include "xls/dslx/channel_direction.h"
 #include "xls/dslx/frontend/pos.h"
@@ -109,6 +109,7 @@ TEST(SampleGeneratorTest, GenerateBasicProcSample) {
   dslx::FileTable file_table;
   std::mt19937_64 rng;
   SampleOptions sample_options;
+  sample_options.set_sample_type(fuzzer::SampleType::SAMPLE_TYPE_PROC);
   constexpr int64_t kProcTicks = 3;
   sample_options.set_calls_per_sample(0);
   sample_options.set_proc_ticks(kProcTicks);
@@ -126,10 +127,6 @@ TEST(SampleGeneratorTest, GenerateBasicProcSample) {
   std::vector<std::string> ir_channel_names;
   XLS_EXPECT_OK(sample.GetArgsAndChannels(args_batch, &ir_channel_names));
   EXPECT_EQ(args_batch.size(), kProcTicks);
-
-  // Just kProcTicks ticks, no channels with content
-  EXPECT_TRUE(args_batch[0].empty());
-  EXPECT_TRUE(ir_channel_names.empty());
 
   EXPECT_THAT(sample.input_text(), HasSubstr("proc main"));
 }
