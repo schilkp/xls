@@ -51,6 +51,7 @@ nav:
     - Type System: 'dslx_type_system.md'
   - Code Generation:
     - Codegen Options: 'codegen_options.md'
+    - Channels and Proc I/O: 'channels_and_proc_io.md'
     - IR Lowering: 'ir_lowering.md'
     - VAST: 'vast.md'
   - Tools:
