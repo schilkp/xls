@@ -1,0 +1,36 @@
+test__input_a  : {
+    bits[32]:0,
+    bits[32]:1,
+    bits[32]:1,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:1,
+    bits[32]:1,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+}
+
+test__input_b : {
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:1
+    bits[32]:1
+    bits[32]:1
+    bits[32]:1
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:0,
+    bits[32]:1
+    bits[32]:1
+    bits[32]:1
+    bits[32]:1
+    bits[32]:1
+}
+
