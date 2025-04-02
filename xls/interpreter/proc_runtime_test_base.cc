@@ -147,6 +147,16 @@ absl::StatusOr<Proc*> CreateRunLengthDecoderProc(std::string_view proc_name,
   return pb.Build({send, this_char, next_num_remaining});
 }
 
+// Create a proc that never sends to it's bits[32] output channel.
+absl::StatusOr<Proc*> CreateNeverSendProc(std::string_view proc_name,
+                                          Channel* out_channel,
+                                          Package* package) {
+  TokenlessProcBuilder pb(proc_name, "tkn", package);
+  pb.SendIf(out_channel, pb.Literal(Value::Token()), pb.Literal(UBits(0, 1)),
+            pb.Literal(UBits(0, 32)));
+  return pb.Build();
+}
+
 TEST_P(ProcRuntimeTestBase, EmptyProc) {
   auto package = CreatePackage();
 
@@ -1165,6 +1175,80 @@ TEST_P(ProcRuntimeTestBase, TraceChannels) {
     XLS_ASSERT_OK(runtime->TickUntilBlocked(/*max_ticks=*/100));
     EXPECT_TRUE(runtime->GetGlobalEvents().trace_msgs.empty());
   }
+}
+
+TEST_P(ProcRuntimeTestBase, ParrallelSendAndImposibleReceive) {
+  auto package = CreatePackage();
+
+  XLS_ASSERT_OK_AND_ASSIGN(Channel * always_empty_channel,
+                           package->CreateStreamingChannel(
+                               "always_empty_ch", ChannelOps::kSendReceive,
+                               package->GetBitsType(32)));
+  XLS_ASSERT_OK(
+      CreateNeverSendProc("decoder", always_empty_channel, package.get())
+          .status());
+
+  XLS_ASSERT_OK_AND_ASSIGN(
+      Channel * output_channel,
+      package->CreateStreamingChannel("output_channel", ChannelOps::kSendOnly,
+                                      package->GetBitsType(32)));
+
+  // Proc that sends to output and receives from always_empty_ch in parallel:
+  ProcBuilder pb(TestName(), package.get());
+  BValue tok = pb.Literal(Value::Token());
+  pb.Send(output_channel, tok, pb.Literal(UBits(10, 32)));
+  pb.Receive(always_empty_channel, tok);
+  XLS_ASSERT_OK(pb.Build());
+
+  std::unique_ptr<ProcRuntime> runtime =
+      GetParam().CreateRuntime(package.get());
+
+  ChannelQueue& out_queue = runtime->queue_manager().GetQueue(output_channel);
+  ASSERT_TRUE(out_queue.IsEmpty());
+
+  XLS_ASSERT_OK(runtime->Tick());
+  XLS_ASSERT_OK(runtime->Tick());
+  XLS_ASSERT_OK(runtime->Tick());
+
+  ASSERT_EQ(out_queue.GetSize(), 1);
+  EXPECT_THAT(out_queue.Read(), Optional(Value(UBits(10, 32))));
+}
+
+TEST_P(ProcRuntimeTestBase, ParrallelImposibleReceiveAndSend) {
+  auto package = CreatePackage();
+
+  XLS_ASSERT_OK_AND_ASSIGN(Channel * always_empty_channel,
+                           package->CreateStreamingChannel(
+                               "always_empty_ch", ChannelOps::kSendReceive,
+                               package->GetBitsType(32)));
+  XLS_ASSERT_OK(
+      CreateNeverSendProc("decoder", always_empty_channel, package.get())
+          .status());
+
+  XLS_ASSERT_OK_AND_ASSIGN(
+      Channel * output_channel,
+      package->CreateStreamingChannel("output_channel", ChannelOps::kSendOnly,
+                                      package->GetBitsType(32)));
+
+  // Proc that receives from always_empty_ch and sends to output in parallel:
+  ProcBuilder pb(TestName(), package.get());
+  BValue tok = pb.Literal(Value::Token());
+  pb.Receive(always_empty_channel, tok);
+  pb.Send(output_channel, tok, pb.Literal(UBits(10, 32)));
+  XLS_ASSERT_OK(pb.Build());
+
+  std::unique_ptr<ProcRuntime> runtime =
+      GetParam().CreateRuntime(package.get());
+
+  ChannelQueue& out_queue = runtime->queue_manager().GetQueue(output_channel);
+  ASSERT_TRUE(out_queue.IsEmpty());
+
+  XLS_ASSERT_OK(runtime->Tick());
+  XLS_ASSERT_OK(runtime->Tick());
+  XLS_ASSERT_OK(runtime->Tick());
+
+  ASSERT_EQ(out_queue.GetSize(), 1);
+  EXPECT_THAT(out_queue.Read(), Optional(Value(UBits(10, 32))));
 }
 
 }  // namespace
